@@ -1,0 +1,9 @@
+#
+# change file name location
+# 
+#rrd_file 	/var/log/nagios/rra/<HOSTNAME>/<HOSTNAME>_<SERVICENAME>.rrd
+
+#
+# rewrite ds_name
+# 
+ds_name		iso.3.6.1.4.1.2.6.4.5.1.0 	cpu

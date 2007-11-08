@@ -1,0 +1,12 @@
+#
+# change file name location
+# 
+#rrd_file        /var/log/nagios/rra/<HOSTNAME>_<SERVICENAME>.rrd
+
+#
+# rewrite ds_name
+# 
+
+ds_name 	iso.3.6.1.4.1.791.2.9.4.5.2.11.22.0		collisions
+ds_name		iso.3.6.1.4.1.791.2.9.4.5.2.11.17.0		output_errors
+ds_name		iso.3.6.1.4.1.791.2.9.4.5.2.11.7.0			input_errors
