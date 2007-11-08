@@ -1,0 +1,8 @@
+#
+# change file name location
+# 
+rrd_file 	/srv/www/vhosts/mon.diglinks.com/html/cacti/rra/localhost_users_6.rrd
+
+#
+# rewrite ds_name
+# 

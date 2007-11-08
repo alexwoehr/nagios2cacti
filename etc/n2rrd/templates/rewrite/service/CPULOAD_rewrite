@@ -1,0 +1,11 @@
+#
+# change file name location
+# 
+
+#
+# rewrite ds_name
+# 
+ds_name		iso.3.6.1.4.1.791.2.9.4.5.2.2.2.0 	cpuuser
+ds_name		iso.3.6.1.4.1.791.2.9.4.5.2.2.3.0 	cpusys
+ds_name		iso.3.6.1.4.1.791.2.9.4.5.2.2.5.0	cpuwio
+

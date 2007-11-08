@@ -1,0 +1,11 @@
+#
+# change file name location
+# 
+rrd_file 	/srv/www/vhosts/mon.diglinks.com/html/cacti/rra/localhost_load_1min_5.rrd
+
+#
+# rewrite ds_name
+# 
+ds_name		load1	load_1min
+ds_name		load5	load_5min
+ds_name		load15	load_15min

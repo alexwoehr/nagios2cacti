@@ -1,0 +1,8 @@
+#
+# change file name location
+# 
+rrd_file 	/var/www/html/cacti/rra/localhost_temp_8.rrd
+
+#
+# rewrite ds_name
+# 
