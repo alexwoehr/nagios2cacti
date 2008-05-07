@@ -23,6 +23,7 @@ use DBI();
 use N2Cacti::Cacti;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Error qw(:try);
 
 BEGIN {
         use Exporter   	();
@@ -143,7 +144,7 @@ sub create_template {
 		return $this->database->get_id("host_template", {
 			hash => $hash });
 	}
-	catch{
+	catch Error::Simple with{
 		$this->log_msg('ERROR cant to find host_template');
 		die "ERROR cant to find host_template";
 	}
@@ -167,15 +168,16 @@ sub create_host {
     		host_template_id	=> $ht_id,
     		description			=> $this->{hostname},
     	});
-    	$h->{hostname}		= $this->{hostaddress};
-    	$h->{id}			= $this->table_save("host", $h);
+    	$h->{hostname}			= $this->{hostaddress};
+    	$h->{id}				= $this->table_save("host", $h);
     }
     else {	
-		$h					= $this->database->new_hash("host");
-		$h->{hostname}		= $this->{hostaddress}; #hostaddress in nagios will be the unique key to identify an host
-		$h->{description}	= $this->{hostname}; 	#hostname in nagios will be display
-		$h->{disabled}		= "on";					#the host are supervised by nagios, they are disable in cacti!
-		$h->{id}			= $this->table_save("host", $h);
+		$h						= $this->database->new_hash("host");
+		$h->{host_template_id} 	= $ht_id;
+		$h->{hostname}			= $this->{hostaddress}; #hostaddress in nagios will be the unique key to identify an host
+		$h->{description}		= $this->{hostname}; 	#hostname in nagios will be display
+		$h->{disabled}			= "on";					#the host are supervised by nagios, they are disable in cacti!
+		$h->{id}				= $this->table_save("host", $h);
     }
     return $h->{id};
 }

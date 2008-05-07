@@ -36,7 +36,7 @@ use N2Cacti::Cacti::Graph;
 use N2Cacti::Cacti::Host;
 use N2Cacti::RRD;
 use Net::Server::Daemonize qw(daemonize);
-
+use Error qw(:try);
 
 
 use constant {
@@ -46,14 +46,16 @@ use constant {
 	SVC_TIMET					=>	4,
 	SVC_SERVICEEXECUTIONTIME	=>	5,
 	SVC_SERVICELATENCY			=>	6,
-	SVC_SERVICEOUTPUT			=>	7,
-	SVC_SERVICEPERFDATA			=>	8,
+	SVC_SERVICESTATE			=>	7,
+	SVC_SERVICEOUTPUT			=>	8,
+	SVC_SERVICEPERFDATA			=>	9,
     HST_HOSTNAME                =>  1,
     HST_HOSTADDRESS             =>  2,
     HST_TIMET                   =>  3,
     HST_HOSTEXECUTIONTIME       =>  4,
-    HST_HOSTOUTPUT              =>  5,
-    HST_HOSTPERFDATA            =>  6,
+    HST_HOSTSTATE               =>  5,
+    HST_HOSTOUTPUT              =>  6,
+    HST_HOSTPERFDATA            =>  7,
 	};
 
 	
@@ -108,14 +110,14 @@ sub main {
 		while (my $line =<FIFO>){
 			chomp $line;
 			$archive->put("$line");
-
-			my @fields = split(';', $line);
+			my @fields = split(/\|/, $line);
 	        my ($servicedesc, 
 				$hostname, 
 				$hostaddress, 
 				$timet, 
 				$serviceexecutiontime, 
-				$servicelatency, 
+				$servicelatency,
+				$servicestate,
 				$serviceoutput, 
 				$serviceperfdata) =
               (
@@ -125,6 +127,7 @@ sub main {
 				$fields[SVC_TIMET],
 				$fields[SVC_SERVICEEXECUTIONTIME],
             	$fields[SVC_SERVICELATENCY],
+				$fields[SVC_SERVICESTATE],
 				$fields[SVC_SERVICEOUTPUT],
 				$fields[SVC_SERVICEPERFDATA]
 			);

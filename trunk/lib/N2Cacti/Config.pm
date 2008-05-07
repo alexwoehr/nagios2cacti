@@ -56,6 +56,7 @@ our $config={
     HOST_PERFDATA_FILE => "/var/log/nagios/host-perfdata.dat",
     SERVICE_PERFDATA_FILE => "/var/log/nagios/perfdata.pipe",
 	ARCHIVE_DIR => "/var/log/nagios/archives/perfdata",
+	BACKLOG_DIR => "/var/log/nagios/backlog",
     ROTATION => "h", #rotation every hours (h) day (d) week (w)
 	PID_FILE => "/var/run/perf2rrd.pid",
 	PERFDB_NAME => "db_perfdata",

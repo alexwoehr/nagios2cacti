@@ -25,6 +25,7 @@ use N2Cacti::Config qw(load_config log_msg get_config);
 use N2Cacti::Archive;
 use N2Cacti::Oreon;
 use N2Cacti::database;
+use Error  qw(:try);
 BEGIN {
         use Exporter   	();
         use vars       	qw($VERSION @ISA @EXPORT @EXPORT_OK);
@@ -162,6 +163,41 @@ sub update_rrd_el {
 	$this->log_msg("<-- N2Cacti::RRD::update_rrd_el()") if $$this{debug};
 }
 
+#-- parse the perfdata and explode the datasource in datasource_min datasource_max... if available
+sub parse_perfdata{
+    my $perfdata    = shift;
+    my $result      = [];
+    my @suffix      = ('', 'warn','crit','min','max');
+    my @uom         = ('s','us','ms','\%','B','KB','MB','TB','c');
+
+    #-- suppression des espaces avant et apres =
+    $perfdata       =~ s/\s+=/=/g;
+    $perfdata       =~ s/=\s+/=/g;
+
+    #-- ajout d'un separateur de champs
+    $perfdata       =~ s/ '/\|'/g;
+    chomp($perfdata);
+    my @datasource  = split /\|/ , $perfdata;
+
+    foreach (@datasource){
+        my @t1=split(/=/,$_);
+        my @values=split(/;/,$t1[1]);
+        my $ds_name=$t1[0];
+        $ds_name =~ s/'//g;
+		$ds_name =~ s/ /_/g;
+        
+        my $value =( $values[0] =~  /([0-9\.]+)/)[0];
+        push(@$result,"$ds_name=$value");
+        for( my $i=1;$i<5;$i++){
+            if (defined($values[$i]) && $values[$i] ne '') {
+                $value =( $values[$i] =~  /([0-9\.]+)/)[0];
+                push(@$result,"$ds_name\_$suffix[$i]=$value");
+            }
+        }
+    }
+    return @$result;
+}
+
 
 sub update_rrd {
 	my $this 			= shift;
@@ -207,11 +243,12 @@ sub update_rrd {
 		}
 		else {
     		# remove spaces before and/or after "=" character
-		    $output =~ s/\s+=/=/g;
-		    $output =~ s/=\s+/=/g;
-		    @data = ( $output =~ /(\S+=[0-9\.]+)/g );
+		    #$output =~ s/\s+=/=/g;
+		    #$output =~ s/=\s+/=/g;
+		    #@data = ( $output =~ /(\S+=[0-9\.]+)/g );
+			
+			@data = parse_perfdata($output);
 		}
-
 
 		my $ds_rewrite = $$this{ds_rewrite};
 
@@ -220,11 +257,11 @@ sub update_rrd {
 		foreach my $kv (@data) {
 			my $ds_name;
 		    my ( $key, $val ) = split /=/, $kv;
-			#$this->log_msg("rewrite = $key : $val : $$ds_rewrite{$key}");
+			
+			$this->log_msg("rewrite = $key : $val : $$ds_rewrite{$key}") if $$this{debug};
 			if ( defined ($$ds_rewrite{$key}) ){
 				$this->log_msg("rewrite $key to $$ds_rewrite{$key}") if ($$this{debug});
 				$ds_name	.= "$$ds_rewrite{$key}";
-				
 			}
 			else{
 		    	$ds_name 	.= "$key";
@@ -303,11 +340,11 @@ sub update_rrd {
 			}
 
 			my $keys = $ds_names;
-			$keys =~ s/:/, /g;
+			$keys =~ s/:/`, `/g;
 			my $values = $ds_value;
 			$values =~ s/:/', '/g;
 			$values ="'$values'";
-			my $query = "replace $$this{template}(date_check, host_id, service_id, time,wday,mday,yday,week,month,year, $keys) VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', 
+			my $query = "replace $$this{template}(date_check, host_id, service_id, time,wday,mday,yday,week,month,year, `$keys`) VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', 
 TIME(FROM_UNIXTIME('$timestamp')),
 DAYOFWEEK(FROM_UNIXTIME('$timestamp')), 
 DAYOFMONTH(FROM_UNIXTIME('$timestamp')),
@@ -374,7 +411,7 @@ sub initialize {
 				service_register	=> '1' });
 			$$this{service_id}		= $item->{service_id};
 		}
-		catch {
+		catch Error::Simple with{
 			$$this{disable_mysql}=1;
 		};
 	}

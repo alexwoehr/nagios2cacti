@@ -18,12 +18,12 @@
 
 package N2Cacti::database;
 use DBI();
+use Error qw(:try);
 
 BEGIN {
         use Exporter   	();
         use vars       	qw($VERSION @ISA @EXPORT @EXPORT_OK);
         @ISA 		=	qw(Exporter);
-        @EXPORT 	= 	qw(try catch);
 }
 
 
@@ -297,7 +297,7 @@ sub item_exist {
 		$$this{raise_exception}=$$this{older_exception_mod};
 		return $value;
 	}
-	catch { # we return false in this case and put a warning into the log file
+	catch Error::Simple with{ # we return false in this case and put a warning into the log file
 		$this->log_msg("N2Cacti::Data::item_exist - undefined error");
 		return 0;
 	};
@@ -342,7 +342,7 @@ sub get_id {
 	my $result;
 	try {
 		return  $this->db_fetch_cell( $sql);
-	}catch {
+	}catch Error::Simple with{
 		$this->log_msg("$sql return no result");
 		die "$sql return no result";
 	}
@@ -412,17 +412,17 @@ sub table_create {
 	$this->execute($query);	
 }
 
-sub try (&@) {
-	my($try,$catch) = @_;
-	eval { &$try };
-	if ($@) {
-	    local $_ = $@;
-	    &$catch;
-	}
-}
-
-sub catch (&) { $_[0] }
-
+#sub try (&@) {
+#	my($try,$catch) = @_;
+#	eval { &$try };
+#	if ($@) {
+#	    local $_ = $@;
+#	    &$catch;
+#	}
+#}
+#
+#sub catch (&) { $_[0] }
+#
 #    try {
 #	die "phooey";
 #    } catch {
