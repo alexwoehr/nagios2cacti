@@ -33,6 +33,7 @@ BEGIN {
         @EXPORT 	= 	qw();
 }
 
+our $ngs_perf_table_create=0;
 
 sub new {
 	my $class   = shift;
@@ -149,8 +150,9 @@ sub update_rrd_el {
 	my $this 		= shift;
 	my $execution	= shift;
 	my $latency		= shift;
+	my $state		= shift;	
 	my $timestamp	= shift || time;
-	
+    my $config 			= $this->{config};     # variable de config issue de config.pm
 	return undef if (!$this->validate());
 	$this->log_msg("--> N2Cacti::RRD::update_rrd_el()") if $$this{debug};
 	if ( -f $$this{perf_rrd_file} ){
@@ -160,7 +162,47 @@ sub update_rrd_el {
 		$this->log_msg ("update $$this{perf_rrd_file} $$this{ds_name_el} with $ds_value") if ($$this{debug}||$rrderror);
         $this->log_msg ("Problem to update $$this{hostname};$$this{service_description};$$this{template} rrd: $rrderror") if ($rrderror);
 	}
+    #--------------------------------------
+    #-- Support for mysql storage database
+    if($this->with_mysql()){
+        $this->log_msg ("store to mysql ") if ($$this{debug});
+		my $database = new N2Cacti::database({
+                database_type       => "mysql",
+                database_schema     => $$config{PERFDB_NAME},
+                database_hostname   => $$config{PERFDB_HOST},
+                database_username   => $$config{PERFDB_USER},
+                database_password   => $$config{PERFDB_PASSWORD},
+                database_port       => "3306",
+                log_msg             => \&log_msg});
+		my $ngs_result={
+			state 			=> $state,
+			execution_time	=> $execution,
+			latency			=> $latency,
+			host_id			=> $$this{host_id},
+			service_id		=> $$this{service_id},
+			date_check 		=> $timestamp,		
+			};
+	    if($ngs_perf_table_create==0){
+            my $fields = {
+                    id          	=> 'bigint NOT NULL auto_increment primary key ',
+                    date_check      => "timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP",
+                    host_id         => 'int(11) NOT NULL',
+                    service_id      => 'int(11) NOT NULL',
+					state			=> 'int(11) NOT NULL',
+					execution_time	=> 'REAL NOT NULL',
+					latency			=> 'REAL NOT NULL',
+                };
+
+            $database->table_create("NGS_RESULT", $fields);
+            $ngs_perf_table_create=1;
+		}
+
+        my $query = "REPLACE NGS_RESULT(date_check, host_id, service_id, state, execution_time, latency) 
+				VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', '$state', '$execution', '$latency');";
+        $database->execute($query);
+	}
 	$this->log_msg("<-- N2Cacti::RRD::update_rrd_el()") if $$this{debug};
+
 }
 
 #-- parse the perfdata and explode the datasource in datasource_min datasource_max... if available

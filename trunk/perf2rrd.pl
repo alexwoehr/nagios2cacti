@@ -189,7 +189,7 @@ sub main {
 				if($$base_rrd{$hostname}{$servicedesc}->validate()){
 					$$base_rrd{$hostname}{$servicedesc}->with_mysql(	$fields[0] =~ m/SERVICEPERFDATA/i && defined($opt->{m}));
 					$$base_rrd{$hostname}{$servicedesc}->update_rrd 	($serviceperfdata,$timet);
-					$$base_rrd{$hostname}{$servicedesc}->update_rrd_el 	($serviceexecutiontime,$servicelatency,$timet);
+					$$base_rrd{$hostname}{$servicedesc}->update_rrd_el 	($serviceexecutiontime,$servicelatency,$servicestate,$timet);
 				}
            	}
 
