@@ -249,7 +249,7 @@ sub main {
 					if($$base_rrd{$hostname}{$servicedesc}->validate()){
 						$$base_rrd{$hostname}{$servicedesc}->with_mysql($fields[0]=~m/SERVICEPERFDATA/i && defined($$opt{m}));
 						$$base_rrd{$hostname}{$servicedesc}->update_rrd 	($serviceperfdata,$timet);
-						$$base_rrd{$hostname}{$servicedesc}->update_rrd_el 	($serviceexecutiontime,$servicelatency,$timet);
+						$$base_rrd{$hostname}{$servicedesc}->update_rrd_el 	($serviceexecutiontime,$servicelatency,$servicestate,$timet);
 					}
 					$debug=1;
            		}
@@ -259,7 +259,7 @@ sub main {
 			}
 	    	close $io && print "fermeture IO" if(defined ($$opt{p}));
 			exit 0 if(defined($$opt{f}));
-		    select(undef, undef, undef, 0.2);  # sleep 1/5th second
+		    #select(undef, undef, undef, 0.2);  # sleep 1/5th second
 		}
 		catch Error::Simple with {
 			my $E = shift;
