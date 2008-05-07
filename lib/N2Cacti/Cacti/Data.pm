@@ -23,6 +23,7 @@ use N2Cacti::Cacti;
 use N2Cacti::Cacti::Method;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Error qw(:try);
 
 BEGIN {
         use Exporter   	();
@@ -71,7 +72,7 @@ sub new {
         log_msg				=> \&log_msg });
 
 
-    $this->{database}->set_raise_exception(1); # for error detection with try/catch
+    $this->{database}->set_raise_exception(1); # for error detection with try/catch Error::Simple with
         
 	bless ($this, $class);
 	return $this;
@@ -337,7 +338,7 @@ sub update_rrd {
 			host_id => $hostid, 
 			data_template_id => $dt->{id}});
 	}
-	catch {
+	catch Error::Simple with {
 		$_ =~ /DATABASE - NO RESULT/ and $this->log_msg("ERROR : $_ : ") and die "ERROR : $_";
 	};
             
@@ -444,20 +445,20 @@ sub update_rrd {
 }
 
 
-#-- try catch code :
+#-- try catch Error::Simple with code :
 #    sub try (&@) {
-#	my($try,$catch) = @_;
+#	my($try,$catch Error::Simple with) = @_;
 #	eval { &$try };
 #	if ($@) {
 #	    local $_ = $@;
-#	    &$catch;
+#	    &$catch Error::Simple with;
 #	}
 #   }
-#    sub catch (&) { $_[0] }
+#    sub catch Error::Simple with (&) { $_[0] }
 
 #    try {
 #	die "phooey";
-#    } catch {
+#    } catch Error::Simple with {
 #	/phooey/ and print "unphooey\n";
 #    };  
 

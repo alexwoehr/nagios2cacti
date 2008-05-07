@@ -23,6 +23,7 @@ use DBI();
 use N2Cacti::Cacti;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Error qw(:try);
 
 BEGIN {
         use Exporter   	();
@@ -173,7 +174,7 @@ sub create_instance {
 	    $hostid              = $this->database->get_id("host", {
 				description => $$this{hostname}} );
 	}
-	catch {
+	catch Error::Simple with{
     	die "host template not found - check you have put api_cacti script".
     		" in cacti dir and configure cacti (create a host template and data input method)";
     };
@@ -186,7 +187,7 @@ sub create_instance {
 			local_graph_id => 0});
 
     	}
-	catch {
+	catch  Error::Simple with{
 		$_ =~ /DATABASE - NO RESULT/ and $this->log_msg("ERROR : $_ : ") and die "ERROR : $_";
 	};
     
@@ -373,7 +374,7 @@ sub update_input {
 	    $hostid              = $this->database->get_id("host",{
 				description => $$this{hostname}} );
 	}
-	catch {
+	catch  Error::Simple with{
     	die "host template not found - check you have put api_cacti script".
     		" in cacti dir and configure cacti (create a host template and data input method)";
     };
@@ -389,7 +390,7 @@ sub update_input {
 
 
     	}
-	catch {
+	catch  Error::Simple with{
 		$_ =~ /DATABASE - NO RESULT/ and $this->log_msg("ERROR : $_ : ") and die "ERROR : $_";
 	};
     

@@ -23,6 +23,7 @@ use DBI();
 use N2Cacti::Cacti;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
+use Error qw(:try);
 
 BEGIN {
         use Exporter   	();
@@ -98,7 +99,7 @@ sub create_method(){
 		return $this->database->get_id("data_input", {
 			hash => $hash });
 	}
-	catch{
+	catch  Error::Simple with{
 		$this->log_msg('ERROR cant to find data_input');
 		die "ERROR cant to find data_input";
 	}
