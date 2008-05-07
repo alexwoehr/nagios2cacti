@@ -188,7 +188,7 @@ sub update_rrd_el {
                     date_check      => "timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP",
                     host_id         => 'int(11) NOT NULL',
                     service_id      => 'int(11) NOT NULL',
-					state			=> 'int(11) NOT NULL',
+					state			=> 'varchar(10) NOT NULL',
 					execution_time	=> 'REAL NOT NULL',
 					latency			=> 'REAL NOT NULL',
                 };
