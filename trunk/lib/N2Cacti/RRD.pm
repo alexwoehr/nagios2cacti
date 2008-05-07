@@ -173,6 +173,16 @@ sub parse_perfdata{
     #-- suppression des espaces avant et apres =
     $perfdata       =~ s/\s+=/=/g;
     $perfdata       =~ s/=\s+/=/g;
+    #-- ajout des quotes si necessaire
+    if($perfdata!~m/\'/){
+        my @temp=split('=',$perfdata);
+        $perfdata="'".shift(@temp)."'=";
+        foreach(@temp){
+            $_ =~ s/ / '/;
+            $perfdata.="$_'=";
+        }
+        $perfdata=~ s/'=$//;
+    }
 
     #-- ajout d'un separateur de champs
     $perfdata       =~ s/ '/\|'/g;
