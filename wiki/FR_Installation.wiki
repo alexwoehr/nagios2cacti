@@ -3,10 +3,10 @@
 
 = Introduction =
 
-Nagios2Cacti est une passerelle entre l'outils de supervision nagios et le frontend RRDTool Cacti. Il permet d'utiliser Nagios pour réaliser toutes les opérations d'ordonnancement et laisse à Cacti le soin de générer les éventuelles graphiques liés à l'activité de monitoring.
+*Nagios2Cacti* est une passerelle entre l'outils de supervision nagios et le frontend RRDTool Cacti. Il permet d'utiliser Nagios pour réaliser toutes les opérations d'ordonnancement et laisse à Cacti le soin de générer les éventuelles graphiques liés à l'activité de monitoring.
 
 
-= Recuperation du code source =
+= Récupération du code source =
 
 vous pouvez récupérer la dernière version de travail de nagios2cacti directement dans le SVN de google : 
  svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only
@@ -39,12 +39,14 @@ Listes variables importantes à configurer dans le fichier
 * NAGIOS_CONF_DIR chemin d'accès au dossier de configuration de Nagios /etc/nagios/ par defaut
 * ROTATION type de rotation : d pour daily, h pour hour, n pour none
 * PID_FILE chemin du fichier contenant le PID quand le démon *perf2rrd.pl* ou *server_perf.pl*
+* SERVICE_PERFDATA_PIPE chemin vers le pipe nommé si c'est la methode employé
 * PERFDB_NAME nom de la base de données utilisé pour les PERFDB (optionnel)
 * PERFDB_USER user
 * PERFDB_PASSWORD password
 * PERFDB_HOST nom du serveur
 * TEMPLATE_SEPARATOR_FIELD : "@" par défaut, permet de spécifier le nom du template n2rrd dans le nom du service nagios exemple : charge_cpu@CPULOAD
 }}}
+
 === Configuration des templates ===
 les templates sont placé dans le dossier 
  /etc/n2rrd/templates/rra
@@ -159,4 +161,24 @@ le TEMPLATENAME permet de récupérer la configuration dans N2RRD :
 {{{ 
  templates/rra/TEMPLATENAME.t
  templates/rewrite/service/TEMPLATENAME_rewrite
+}}}
+
+= Démarrage du démon =
+
+== Méthode UDP ==
+{{{
+/usr/lib/N2Cacti/server_perf.pl -u -d -c /etc/n2rrd/n2rrd.conf -p2080
+-m enable mysql support
+-d daemonize 
+-c configuration file
+-p port UDP
+-v verbose (to debug)
+}}}
+== Méthode du PIPE ==
+{{{
+/usr/lib/N2Cacti/perf2rrd.pl -u -d -c /etc/n2rrd/n2rrd.conf
+-m enable mysql support
+-d daemonize 
+-c configuration file
+-v verbose (to debug)
 }}}
