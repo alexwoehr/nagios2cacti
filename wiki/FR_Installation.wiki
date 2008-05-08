@@ -1,0 +1,94 @@
+#summary installation guides-lines
+
+= Introduction =
+
+Nagios2Cacti est une passerelle entre l'outils de supervision nagios et le frontend RRDTool Cacti. Il permet d'utiliser Nagios pour réaliser toutes les opérations d'ordonnancement et laisse à Cacti le soin de générer les éventuelles graphiques liés à l'activité de monitoring.
+
+
+= Recuperation du code source =
+
+vous pouvez récupérer la dernière version de travail de nagios2cacti directement dans le SVN de google : 
+ svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only
+
+ou bien, vous pouvez télécharger la dernière archive : 
+[http://code.google.com/p/nagios2cacti/downloads/list download]
+
+= Méthode de transmission =
+
+il y a deux méthodes de transmission possible : 
+* Transfert par un pipe nommé
+* Transfert par UDP
+
+== Transfert par PIPE ==
+
+Cette méthode est la plus légère, nagios écrit dans un pipe, et le serveur *perf2rrd* lit ces données les traites et les intègre dans des bases RRDtool. Si le serveur *perf2rrd* s'interrompt pour une raison (filesystem plein..) les données seront perdu, car le mécanisme de PIPE ne peut garder suffisamment de données en buffer.
+
+== Transfert par UDP ==
+
+Cette méthode est plus sûr. On configure Nagios pour qu'ils exécutent une commande pour transmettre les données de performance. Cette commande intègre un mécanisme de protection qui va enregistrer toutes les données dans un dossier, un fichier par indicateur. Le fichier est supprimé une fois le transfert de toutes les données à réussit. Si la transmission échoue, les données vont s'accumuler et seront correctement reprise ensuite.
+
+= Configuration =
+== Configuration de N2RRD ==
+Listes variables importantes à configurer dans le fichier
+ /etc/n2rrd/n2rrd.conf
+
+* CACTI_DIR chemin d'accès a la racine de cacti
+* OREON_DIR chemin d'accès a la racine d'oreon
+* NAGIOS_CONF_DIR chemin d'accès au dossier de configuration de Nagios /etc/nagios/ par defaut
+* ROTATION type de rotation : d pour daily, h pour hour, n pour none
+* PID_FILE chemin du fichier contenant le PID quand le démon *perf2rrd.pl* ou *server_perf.pl*
+* PERFDB_NAME nom de la base de données utilisé pour les PERFDB (optionnel)
+* PERFDB_USER user
+* PERFDB_PASSWORD password
+* PERFDB_HOST nom du serveur
+* TEMPLATE_SEPARATOR_FIELD : "@" par défaut, permet de spécifier le nom du template n2rrd dans le nom du service nagios exemple : charge_cpu@CPULOAD
+
+
+=== Configuration de Cacti ===
+*perf2rrd.pl* et *server_perf.pl* doit pouvoir lire le fichier :
+ $CACTI_DIR$/include/config.php 
+
+nagios2cacti y récupère les paramètres de connexion que Cacti utilise pour accéder à sa base de données.
+
+=== Configuration pour Oreon (FACULTATIF) ===
+*perf2rrd.pl* et *server_perf.pl* doit pouvoir lire le fichier :
+ $OREON_DIR$/oreon.conf.php
+
+nagios2cacti y récupère les paramètres de connexion qu'Oreon utilise pour accéder à sa base de données. La fonctionnalité de stockage dans une base MySQL des données de performance ne peut être actuellement utilisé qu'avec Oreon. 
+
+== Configuration de Nagios ==
+
+=== Configuration pour le PIPE ===
+* /etc/nagios/nagios.cfg
+ process_performance_data=1
+ service_perfdata_file=/var/log/nagios/perfdata.pipe
+ service_perfdata_file_template=[SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$
+ service_perfdata_file_mode=w
+
+
+=== Configuration pour UDP ===
+* /etc/nagios/nagios.cfg
+ process_performance_data=1
+ service_perfdata_command=send_perfdata_udp
+
+* /etc/nagios/checkcommand.cfg
+ define command{
+    command_name            send_perfdata_udp
+    command_line            /usr/lib/N2Cacti/send_perf.pl -d  "[SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$"  -p 2080 -H localhost
+ }
+
+=== Configuration des noms de services ===
+On utilise la notation suivante pour la configuration des noms de service dans Nagios : 
+SERVICENAME@TEMPLATENAME
+ainsi plusieurs services peuvent avoir le même template N2RRD.
+attention : il ne s'agit pas ici du template au sens Nagios du terme!!!
+
+Les graphiques dans Cacti porteront le nom : <HOSTNAME> - <SERVICENAME>
+Les graph template porteront le nom : Nagios - <SERVICENAME>
+
+le TEMPLATENAME permet de récupérer la configuration dans N2RRD : 
+* templates/rra/TEMPLATENAME.t
+* templates/rewrite/service/TEMPLATENAME_rewrite
+
+
+
