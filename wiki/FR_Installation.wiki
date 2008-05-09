@@ -1,4 +1,4 @@
-#summary installation guides-lines
+#summary guide d'installation
 #labels configuration,installation
 
 = Introduction =
