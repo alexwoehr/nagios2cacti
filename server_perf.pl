@@ -168,7 +168,6 @@ sub main {
 
 				chomp $line;
 				log_msg( "reception: $line") if($debug);
-				$debug=0;
 				$archive->put("$line");
 				my @fields = split(/\|/, $line);
 		        my ($servicedesc, 
