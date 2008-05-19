@@ -532,6 +532,10 @@ sub initialize {
             	s/#.*//;         # Remove partial comments
             	chomp;
 				$$ds_rewrite{$1} = $2		if /^ds_name\s+(\S+)\s+(\S+)/;
+				$$ds_rewrite{$1."_min"} = $2."_min"		if /^ds_name\s+(\S+)\s+(\S+)/;
+				$$ds_rewrite{$1."_max"} = $2."_max"		if /^ds_name\s+(\S+)\s+(\S+)/;
+				$$ds_rewrite{$1."_warn"} = $2."_warn"		if /^ds_name\s+(\S+)\s+(\S+)/;
+				$$ds_rewrite{$1."_crit"} = $2."_crit"		if /^ds_name\s+(\S+)\s+(\S+)/;
             	$$this{rrd_file}      = $1 	if /^rrd_file\s+(\S+)/;
            	 	$$this{perf_rrd_file} = $1 	if /^perf_rrd_file\s+(\S+)/;
         	}
@@ -554,6 +558,10 @@ sub initialize {
             chomp;
 
 			$$ds_rewrite{$1} = $2		if /^ds_name\s+(\S+)\s+(\S+)/;
+			$$ds_rewrite{$1."_min"} = $2."_min"		if /^ds_name\s+(\S+)\s+(\S+)/;
+			$$ds_rewrite{$1."_max"} = $2."_max"		if /^ds_name\s+(\S+)\s+(\S+)/;
+			$$ds_rewrite{$1."_warn"} = $2."_warn"		if /^ds_name\s+(\S+)\s+(\S+)/;
+			$$ds_rewrite{$1."_crit"} = $2."_crit"		if /^ds_name\s+(\S+)\s+(\S+)/;
             $$this{rrd_file}      = $1 	if /^rrd_file\s+(\S+)/;
             $$this{perf_rrd_file} = $1 	if /^perf_rrd_file\s+(\S+)/;
         }
