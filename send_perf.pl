@@ -45,7 +45,7 @@ use base 'Error::Simple';
 1;
 
 package main;
-use lib qw(. ./lib ../lib /usr/lib/N2Cacti/lib);
+use lib qw(. ./lib /usr/lib/N2Cacti/lib);
 use Getopt::Std;
 use N2Cacti::Archive;
 use N2Cacti::Config;
@@ -91,12 +91,13 @@ our $hostname						= $data[2];
 
 #-- backup perfdata in backlog before processed
 my $cb_backup_perfdata = sub {
+	my $message = shift;
 	my $archive = new N2Cacti::Archive({
 		archive_dir => "$backlog_dir",
 		rotation	=> "n",
         basename    => "${hostname}_${service_name}.log",
 		});
-	$archive->put($$opt{d});
+	$archive->put($message);
 	$archive->close();
 };
 
@@ -187,27 +188,43 @@ my $cb_process_backlog = sub{
 	finally{
 		$archive->close();
 		if($error == 0){
-			unlink($archive->{fullpath}) if -f $archive->{fullpath};
+			if(-e $$archive{fullpath}){
+				unlink($archive->{fullpath});
+				print "rm $$archive{fullpath}\n";
+			}
 		}
 	};
 };
 
 my $cb_process_perfdata= sub{
-	my $message = shift; 
+	my $message = shift;
+    my $archive = new N2Cacti::Archive({
+        archive_dir => "$backlog_dir",
+		rotation	=> "n",
+        basename    => "${hostname}_${service_name}.log",
+        log_msg     => \&log_msg});
+			
 	try{
-        &$cb_send_perfdata($message, $$opt{l}) if (defined($$opt{l}));
-        &$cb_send_perfdata($message, $$opt{H}, $$opt{p}) if (defined($$opt{H}) && defined($$opt{p}));
+		if (-e $archive->{fullpath}){
+			print "put $$archive{fullpath}:$message\n";
+			&$cb_backup_perfdata($message);
+			&$cb_process_backlog;
+		}
+		else{
+			print "file $$archive{fullpath} dont exist sending...\n";
+	        &$cb_send_perfdata($message, $$opt{l}) if (defined($$opt{l}));
+	        &$cb_send_perfdata($message, $$opt{H}, $$opt{p}) if (defined($$opt{H}) && defined($$opt{p}));
+		}
     }
     catch Error::Simple with{
-		&$cb_backup_perfdata;
+		&$cb_backup_perfdata($message);
     };
 };
 
 
 
 my $cb_main = sub {
-	&$cb_backup_perfdata;
-	&$cb_process_backlog;
+	&$cb_process_perfdata($$opt{d});
 	return 0;
 };
 

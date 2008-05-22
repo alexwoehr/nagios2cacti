@@ -19,10 +19,6 @@
 
 use strict;
 
-use lib qw(./lib ../lib /usr/lib/N2Cacti/lib);
-
-use Error qw(:try);
-
 
 
 #-- Class to handle socket exception
@@ -35,6 +31,14 @@ use base 'Error::Simple';
 1;
 
 package main;
+use Cwd;
+use Cwd 'abs_path';
+my $chdir=abs_path($0);
+$chdir =~ s/\/[^\/]+$//g;
+chdir($chdir);
+use lib qw(. ./lib /usr/lib/N2Cacti/lib);
+
+use Error qw(:try);
 
 use IO::Socket;
 use RRDs;

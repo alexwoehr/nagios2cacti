@@ -19,7 +19,13 @@
 
 use strict;
 
-use lib qw(./lib ../lib /usr/lib/N2Cacti/lib);
+use Cwd;
+use Cwd 'abs_path';
+my $chdir=abs_path($0);
+$chdir =~ s/\/[^\/]+$//g;
+chdir($chdir);
+
+use lib qw(. ./lib);
 use RRDs;
 use Getopt::Std;
 use Fcntl;             # for sysopen
