@@ -37,6 +37,7 @@ sub new {
 		log_msg             => $param{cb_log_msg}           || \&default_log_msg,
 		fullpath			=> "",
 	};
+	$this->{fullpath}= "$$this{archive_dir}/$$this{basename}";
 	$this->{'open'}	= \&open_hourly if ($$this{rotation} eq "h");
 	$this->{'open'}	= \&open_daily if ($$this{rotation} eq "d");
 	$this->{'open'}	= \&open_raw if($$this{rotation} eq "n");
