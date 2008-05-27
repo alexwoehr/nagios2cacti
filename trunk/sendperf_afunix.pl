@@ -103,56 +103,46 @@ my $cb_backup_perfdata = sub {
 
 
 #-- process data in backlog (send to perf2rrd server) 
-
-
-
 #-- send perfdata throw an exception if transmission has failed
 my $cb_send_perfdata = sub {
 	my $message 	= shift;
 	my $hostname 	= shift;
-	my $port		= shift || 0;
 	my $sockpath	= $hostname;
 	my $result;
    	my 	($sock, $MAXLEN, $PORTNO, $TIMEOUT);
 	my $hash		= md5_hex($message);
 	my $type 		= SOCK_DGRAM;
-	$MAXLEN  		= 1024;
+	$MAXLEN  		= 16000;
 	$PORTNO  		= 5151;
-	$TIMEOUT 		= 1;
+	$TIMEOUT 		= 10;
 
 	try {
-		if($port>0){
-			$sock = IO::Socket::INET->new(Proto     => 'udp',
-                              	PeerPort  => $port,
-                              	PeerAddr  => $hostname,
-							  	Timeout	=> 10)
-    			or throw Error::Socket("INET->new($hostname:$port):$!");
-		}
-		else{
+		if(defined($$opt{s})){	
 			throw Error::Socket("$sockpath is not a socket") if ! -S $sockpath;
-			$sock = IO::Socket::UNIX->new(PeerAddr  => "$sockpath",
-                                Type      => $type,
-                                Timeout   => 10 )
+			$sock = IO::Socket::UNIX->new(
+								Peer 		=> "$sockpath",
+                                Type      	=> SOCK_STREAM
+                                 )
     			or throw Error::Socket("UNIX->new($sockpath):$!");
+			print "connecting to $sockpath\n";
 		}
-		chomp($message);
-		$message.="\n";
 		$hash        = md5_hex($message);
 		print "sending $message\n";
-		$sock->send($message) 
+		print $sock $message
     		or throw Error::Socket("SEND($message):$!");
 
 		local $SIG{ALRM} = sub { throw Error::Socket( "timeout ${TIMEOUT}s"); };
   		alarm $TIMEOUT;
-	    $sock->recv($result, $MAXLEN)     
+	    $result = scalar <$sock>
     		or throw Error::Socket("RECV:$!");
-		throw Error::Socket("hash incorrect") if ($result ne $hash);
+		chomp($result);
+		throw Error::Socket("hash incorrect : $result=$hash") if ($result ne $hash);
 		print "II\t$message - hash correct\n" if $result eq $hash;
     	alarm 0;
 	}
 	catch Error::Socket with{
-		print "result:$result\n";
 		my $E = shift;
+		print "result:" . $E->stringify();
 		throw $E;
 	}
 	finally{
