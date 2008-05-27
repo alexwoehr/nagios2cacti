@@ -254,7 +254,6 @@ sub main {
 						$$base_rrd{$hostname}{$servicedesc}->update_rrd 	($serviceperfdata,$timet);
 						$$base_rrd{$hostname}{$servicedesc}->update_rrd_el 	($serviceexecutiontime,$servicelatency,$servicestate,$timet);
 					}
-					$debug=1;
            		}
 
 	
