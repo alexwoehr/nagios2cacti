@@ -28,6 +28,11 @@ Cette méthode est la plus légère, nagios écrit dans un pipe, et le serveur *
 
 Cette méthode est plus sûr. On configure Nagios pour qu'ils exécutent une commande pour transmettre les données de performance. Cette commande intègre un mécanisme de protection qui va enregistrer toutes les données dans un dossier, un fichier par indicateur. Le fichier est supprimé une fois le transfert de toutes les données à réussit. Si la transmission échoue, les données vont s'accumuler et seront correctement reprise ensuite.
 
+== Transfer par AF_UNIX ==
+
+Cette méthode semblable à l'udp mais en local, elle devrait offrir performance et fiabilité.
+
+
 = Configuration =
 == Configuration de N2RRD ==
 === Configuration du fichiers : /etc/n2rrd/n2rrd.conf ===
@@ -147,6 +152,21 @@ nagios2cacti y récupère les paramètres de connexion qu'Oreon utilise pour acc
     command_line            /usr/lib/N2Cacti/send_perf.pl -d  "[SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$"  -p 2080 -H localhost
  }
 }}}
+
+=== Configuration pour AF_UNIX ===
+* /etc/nagios/nagios.cfg
+{{{
+ process_performance_data=1
+ service_perfdata_command=send_perfdata_afunix
+}}}
+* /etc/nagios/checkcommand.cfg
+{{{
+define command{
+    command_name            send_perfdata_afunix
+    command_line            /usr/lib/N2Cacti/sendperf_afunix.pl -d "[SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$"  -s "/var/log/nagios/perfdata.sock"
+}
+}}}
+
 === Configuration des noms de services ===
 On utilise la notation suivante pour la configuration des noms de service dans Nagios : 
 SERVICENAME@TEMPLATENAME
@@ -170,7 +190,7 @@ le TEMPLATENAME permet de récupérer la configuration dans N2RRD :
 /usr/lib/N2Cacti/server_perf.pl -u -d -c /etc/n2rrd/n2rrd.conf -p2080
 -m enable mysql support
 -d daemonize 
--c configuration file
+-c configuration file ( by default : /etc/n2rrd/n2rrd.conf)
 -p port UDP
 -v verbose (to debug)
 }}}
@@ -179,6 +199,16 @@ le TEMPLATENAME permet de récupérer la configuration dans N2RRD :
 /usr/lib/N2Cacti/perf2rrd.pl -u -d -c /etc/n2rrd/n2rrd.conf
 -m enable mysql support
 -d daemonize 
--c configuration file
+-c configuration file ( by default : /etc/n2rrd/n2rrd.conf)
+-v verbose (to debug)
+}}}
+
+== Méthode AF_UNIX ==
+{{{
+/usr/lib/N2Cacti/server_afunix.pl -u -d -c /etc/n2rrd/n2rrd.conf -s /var/log/nagios/perfdata.sock
+-m enable mysql support
+-d daemonize 
+-c configuration file ( by default : /etc/n2rrd/n2rrd.conf)
+-p port UDP
 -v verbose (to debug)
 }}}
