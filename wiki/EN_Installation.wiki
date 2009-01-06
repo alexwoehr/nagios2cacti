@@ -27,6 +27,10 @@ This method is lighter, nagios write in a pipe and the server *perf2rrd* read th
 This method is safer. Nagios is configured to execute a command to handle the perfdata after the check execution. These command write the datas in a folder with a file by indicator. The file is deleted when all datas are transfered  with success. If the transfer failed, the data will be keep in files and will be proceed when the communication will be success.
 
 = Configuration =
+== Installation folder ==
+The configuration files for nagios2cacti must be copied in /etc/n2rrd, with in the root of this folder the n2rrd.conf file and the templates folder.
+by default, the software part must to be installed in /usr/lib/N2Cacti folder.
+
 == N2RRD Configuration ==
 === Configuration file : /etc/n2rrd/n2rrd.conf ===
 Important variable list to configure in the file :
