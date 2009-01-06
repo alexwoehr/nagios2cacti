@@ -34,6 +34,12 @@ Cette méthode semblable à l'udp mais en local, elle devrait offrir performance
 
 
 = Configuration =
+== Dossier d'installation ==
+La configuration de nagios2cacti doit être placer dans /etc/n2rrd avec dans la racine de ce dossier le fichier n2rrd.conf et le dossier templates.
+
+Par défaut, la partie logiciel doit être installer dans /usr/lib/N2Cacti
+
+
 == Configuration de N2RRD ==
 === Configuration du fichiers : /etc/n2rrd/n2rrd.conf ===
 Listes variables importantes à configurer dans le fichier
