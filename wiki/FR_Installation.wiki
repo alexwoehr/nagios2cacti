@@ -14,6 +14,22 @@ vous pouvez récupérer la dernière version de travail de nagios2cacti directem
 ou bien, vous pouvez télécharger la dernière archive : 
 [http://code.google.com/p/nagios2cacti/downloads/list download]
 
+= Instruction d'installation =
+Pour procéder à l'installation dans les dossiers par défaut : 
+{{{ 
+# cd
+# svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only
+# cd nagios2cacti-read-only/
+# mv etc/n2rrd/ /etc
+# cd /etc/n2rrd/
+# cp dist-n2rrd.conf n2rrd.conf
+# cd
+# cp -R nagios2cacti-read-only /usr/lib/N2Cacti
+# chmod +x /usr/lib/N2Cacti/*.pl
+}}}
+ensuite vous devrez personnaliser la configuration de n2rrd (voir la suite de la documentation pour le détail) 
+
+
 = Méthode de transmission =
 
 il y a deux méthodes de transmission possible : 
