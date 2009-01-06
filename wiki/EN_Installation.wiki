@@ -9,6 +9,21 @@
 you can download the last nagios2cacti version directly in the developpement SVN : 
 {{{ svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only }}}
 
+= Installation instruction =
+installation instruction : 
+{{{ 
+# cd
+# svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only
+# cd nagios2cacti-read-only/
+# mv etc/n2rrd/ /etc
+# cd /etc/n2rrd/
+# cp dist-n2rrd.conf n2rrd.conf
+# cd
+# cp -R nagios2cacti-read-only /usr/lib/N2Cacti
+# chmod +x /usr/lib/N2Cacti/*.pl
+}}}
+next step, customize your configuration file for your specific installation
+
 or, you can download the last archive : 
 [http://code.google.com/p/nagios2cacti/downloads/list download]
 
