@@ -1,4 +1,5 @@
 #summary installation guides-lines
+#labels installation,documentation
 
 = Introduction =
 
@@ -8,6 +9,9 @@
 
 you can download the last nagios2cacti version directly in the developpement SVN : 
 {{{ svn checkout http://nagios2cacti.googlecode.com/svn/trunk/ nagios2cacti-read-only }}}
+
+or, you can download the last archive : 
+[http://code.google.com/p/nagios2cacti/downloads/list download]
 
 = Installation instruction =
 installation instruction : 
@@ -22,10 +26,7 @@ installation instruction :
 # cp -R nagios2cacti-read-only /usr/lib/N2Cacti
 # chmod +x /usr/lib/N2Cacti/*.pl
 }}}
-next step, customize your configuration file for your specific installation
-
-or, you can download the last archive : 
-[http://code.google.com/p/nagios2cacti/downloads/list download]
+next step, you will customize your configuration file for your specific installation (see the next part of this documentation)
 
 
 = Communication method =
