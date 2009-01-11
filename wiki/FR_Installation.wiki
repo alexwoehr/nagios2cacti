@@ -29,6 +29,18 @@ Pour procéder à l'installation dans les dossiers par défaut :
 }}}
 ensuite vous devrez personnaliser la configuration de n2rrd (voir la suite de la documentation pour le détail) 
 
+= PERL librairy configuration =
+required packages;
+{{{
+perl
+perl-datemanip
+perl-Net-Server
+perl-error
+}}}
+
+
+you can use your package application of your distribution or use the CPAN command : 
+{{{perl -MCPAN -e 'install Error'}}}
 
 = Méthode de transmission =
 
