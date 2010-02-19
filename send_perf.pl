@@ -1,4 +1,6 @@
 #!/usr/bin/perl -w
+# tsync::casole imola
+# sync::grado
 # nagios: -epn
 # disable Embedded Perl Interpreter for nagios 3.0
 ############################################################################
@@ -35,36 +37,35 @@
 # http://www.spi.ens.fr/~beig/systeme/sockets.html
 #
 #---------------------------------------------------------------------------
+
+##########################################################################
+# Init
+##########################################################################
 use strict;
 use warnings;
-use Error qw(:try);
 
-#-- Class to handle socket exception
-package Error::Socket;
-use base 'Error::Simple';
-1;
+package Main;
 
-package main;
-use lib qw(. ./lib /usr/lib/N2Cacti/lib);
+require Sys::Syslog;
+
+use lib qw(. /HOME/uxwadm/scripts/nagios/n2cacti/lib);
 use Getopt::Std;
+
 use N2Cacti::Archive;
 use N2Cacti::Config;
+
 use IO::Socket;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
-use Error qw(:try);
 #use IO::Socket::SSL;
+
 #-- Do not buffer writes
 $| = 1;
 
-#-- initiatilisation
-our $opt      = {};
-getopts( "H:p:d:s:C:", $opt );
+our $opt = {};
+getopts( "H:p:d:s:C:v", $opt );
 
-
-#system('echo $0>/data/archive/perfdata/backlog/`date +%F`.follow');
-
-my $cb_usage= sub {
-#	system('echo $0>/data/archive/perfdata/backlog/`date +%F`.follow');
+# Arguments check
+if ( ( ( ! defined($$opt{H}) || ! defined($$opt{p}) ) && ! defined($$opt{s}) ) || ! defined($$opt{d}) ) {
 	print "$0 parameter: 
 -H <hostname>	:perf2rrd server hostname
 -p <port>		: perf2rrd server port
@@ -72,168 +73,234 @@ my $cb_usage= sub {
 -C <path> 		: n2rrd configuration file\n";
 	print '-d <perfdata> 	: format [SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$'."\n";
 	print "\tyou can send data with AF_UNIX and AF_INET\n";	
-};
+	exit 1;
+} 
 
-#-- verification du nombre d'argument passe en parametre
-if(((!defined($$opt{H}) || !defined($$opt{p}))&& !defined($$opt{s})) || !defined($$opt{d})) {&$cb_usage; exit 1;} 
-
-
-#-- chargement de la configuration
-our $config 						= get_config($$opt{C});
-our @data							= split(/\|/, $$opt{d});
-our $backlog_dir 					= $$config{BACKLOG_DIR};
-our ($service_name,$template_name) 	= split($$config{TEMPLATE_SEPARATOR_FIELD}, $data[1]);
-our $hostname						= $data[2];
+# Configuration loading
+our $config = get_config($$opt{C});
+our @data = split(/\|/, $$opt{d});
+our $backlog_dir = $$config{BACKLOG_DIR};
+our ($service_name,$template_name) = split($$config{TEMPLATE_SEPARATOR_FIELD}, $data[1]);
+our $hostname = $data[2];
 
 
+my $archive = new N2Cacti::Archive({
+	archive_dir	=> "$backlog_dir",
+	rotation	=> "n",
+	basename	=> "${hostname}_${service_name}.db"
+});
 
+##########################################################################
+# Functions
+##########################################################################
 
+sub log_msg {
+        my $str = shift;
+        my $level = shift;
+
+        if ( $level =~ /^$/ ) {
+                $level = "LOG_INFO";
+        }
+
+	if ( $level =~ /LOG_DEBUG/ and defined $opt->{v} ) {
+		return undef;
+	}	
+
+        chomp $str;
+
+#        if ( defined ($opt->{d}) ) {
+#                Sys::Syslog::openlog("n2cacti", "ndelay", "LOG_DAEMON");
+#                Sys::Syslog::syslog($level, $str);
+#                Sys::Syslog::closelog();
+#        } else {
+                print "$level:\t$str\n";
+#        }
+}
 
 #-- backup perfdata in backlog before processed
-my $cb_backup_perfdata = sub {
+sub backup_perfdata {
 	my $message = shift;
-	my $archive = new N2Cacti::Archive({
-		archive_dir => "$backlog_dir",
-		rotation	=> "n",
-        basename    => "${hostname}_${service_name}.log",
-		});
+	my $archive = shift;
+
 	$archive->put($message);
-	$archive->close();
-};
+}
 
+#-- send perfdata and return false if transmission has failed
+sub send_perfdata {
+	my $message = shift;
+	my $hostname = shift;
+	my $port = shift || 0;
 
-#-- process data in backlog (send to perf2rrd server) 
+	my $sockpath = $hostname;
+	my ($result, $buffer);
+   	my ($sock, $MAXLEN, $PORTNO, $TIMEOUT);
 
+	my $hash = md5_hex($message);
+	my $type = SOCK_DGRAM;
+	my $log_line = "";
+	my $return_code = 0;
 
+	$MAXLEN = 1024;
+	$PORTNO = 5151;
+	$TIMEOUT = 1;
 
-#-- send perfdata throw an exception if transmission has failed
-my $cb_send_perfdata = sub {
-	my $message 	= shift;
-	my $hostname 	= shift;
-	my $port		= shift || 0;
-	my $sockpath	= $hostname;
-	my $result;
-   	my 	($sock, $MAXLEN, $PORTNO, $TIMEOUT);
-	my $hash		= md5_hex($message);
-	my $type 		= SOCK_DGRAM;
-	$MAXLEN  		= 1024;
-	$PORTNO  		= 5151;
-	$TIMEOUT 		= 1;
-
-	try {
-		if($port>0){
-			$sock = IO::Socket::INET->new(Proto     => 'udp',
-                              	PeerPort  => $port,
-                              	PeerAddr  => $hostname,
-							  	Timeout	=> 10)
-    			or throw Error::Socket("INET->new($hostname:$port):$!");
+	if ( $port > 0 ) {
+		if ( not $sock = IO::Socket::INET->new(
+			Proto		=> 'udp',
+			PeerPort	=> $port,
+			PeerAddr	=> $hostname,
+			Timeout		=> 10
+		) ) {
+			Main::log_msg("send_perf.pl::send_perdata(): INET->new($hostname:$port):$!", "LOG_CRIT");
+			return 1;
 		}
-		else{
-			throw Error::Socket("$sockpath is not a socket") if ! -S $sockpath;
-			$sock = IO::Socket::UNIX->new(PeerAddr  => "$sockpath",
-                                Type      => $type,
-                                Timeout   => 10 )
-    			or throw Error::Socket("UNIX->new($sockpath):$!");
+	} else {
+		if ( ! -S $sockpath ) {
+			Main::log_msg("send_perf.pl::send_perfdata(): $sockpath is not a socket", "LOG_CRIT");
+			return 1;
 		}
-		chomp($message);
-		$message.="\n";
-		$hash        = md5_hex($message);
-		print "sending $message\n";
-		$sock->send($message) 
-    		or throw Error::Socket("SEND($message):$!");
 
-		local $SIG{ALRM} = sub { throw Error::Socket( "timeout ${TIMEOUT}s"); };
-  		alarm $TIMEOUT;
-	    $sock->recv($result, $MAXLEN)     
-    		or throw Error::Socket("RECV:$!");
-		throw Error::Socket("hash incorrect") if ($result ne $hash);
-		print "II\t$message - hash correct\n" if $result eq $hash;
-    	alarm 0;
-	}
-	catch Error::Socket with{
-		print "result:$result\n";
-		my $E = shift;
-		throw $E;
-	}
-	finally{
-		close($sock) if defined($sock);	
-	};
-};
-
-
-my $cb_process_backlog = sub{
-	my $error=0;
-    my $archive = new N2Cacti::Archive({
-        archive_dir => "$backlog_dir",
-		rotation	=> "n",
-        basename    => "${hostname}_${service_name}.log",
-        log_msg     => \&log_msg});
-	my $io = $archive->open_raw(time, "r"); #-- time useless but necessary... sick!
-	try {
-		while(<$io>){
-			&$cb_send_perfdata($_, $$opt{s}) if (defined($$opt{s}));
-			&$cb_send_perfdata($_, $$opt{H}, $$opt{p}) if (defined($$opt{H}) && defined($$opt{p}));
+		if ( not $sock = IO::Socket::UNIX->new(
+			PeerAddr	=> "$sockpath",
+			Type		=> $type,
+			Timeout		=> 10
+		) ) {
+			Main::log_msg("send_perf.pl::send_perdata(): UNIX->new($sockpath):$!", "LOG_CRIT");
+			return 1;
 		}
 	}
-	catch Error::Socket with{
-		my $E = shift;
-		print "EE:Socket: ".$E->stringify()."\n";
-		$error++;
+
+	chomp($message);
+	$message .= "\n";
+	$hash = md5_hex($message);
+
+	$buffer = $message;
+	chomp($buffer);
+	$log_line = "Sending : $buffer : ";
+
+	if ( $sock->send($message) ) {
+		$log_line .= "OK";
+		Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_DEBUG");
+	} else {
+		$log_line .= "KO : $!";
+		Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
+		return 1;
 	}
-	catch Error::Simple with{
-		my $E = shift;
-		print "EE: ".$E->stringify()."\n";
-		$error++;
+
+	# We need to use an eval bloc to limit the timoout's spread
+	eval {
+		no warnings 'all';
+		local $SIG{ALRM} = sub {
+			Main::log_msg("send_perf.pl::send_perfdata(): timeout ${TIMEOUT}s", "LOG_CRIT");
+			return 1;
+		};
+	  	alarm $TIMEOUT;
+
+		my $log_line = "Receiving : ";
+
+		if ( $sock->recv($result, $MAXLEN) ) {
+			alarm 0;
+			$log_line .= "OK";
+			Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_DEBUG");
+		} else {
+			alarm 0;
+			$log_line .= $!;
+			Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
+			return 1;
+		}
+	} or return 1;
+
+	$log_line = "Checking : ";
+
+	if ( $result ne $hash ) {
+		$log_line .= "KO : incorrect hash";
+		Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
+		return 1;
+	} else {
+		$log_line .= "OK : correct hash";
+		Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_DEBUG");
+		return 0;
 	}
-	finally{
-		$archive->close();
-		if($error == 0){
-			if(-e $$archive{fullpath}){
-				unlink($archive->{fullpath});
-				print "rm $$archive{fullpath}\n";
+}
+
+sub process_backlog {
+	my $archive = shift;
+
+	my $error = 0;
+	my $errors_number = 0;
+	my $total_number = 0;
+	my $timestamp = 0;
+	my $backlog = {};
+
+	my $io = $archive->open();
+
+	if ( not defined $io ) {
+		log_msg("send_perf.pl::process_backlog(): db handler is not defined", "LOG_CRIT");
+		return 1;
+	}
+
+	$backlog = $archive->fetch();
+
+	foreach $timestamp (keys %$backlog) {
+		$total_number++;
+
+		if ( defined($$opt{s}) eq 1 ) {
+			if ( send_perfdata($backlog->{$timestamp}, $$opt{s}) eq 0 ) {
+				$archive->{io}->remove($timestamp);
 			}
 		}
-	};
-};
 
-my $cb_process_perfdata= sub{
+		if ( (defined($$opt{H}) and defined($$opt{p})) ) {
+			if ( send_perfdata($backlog->{$timestamp}, $$opt{H}, $$opt{p}) eq 0 ) {
+				$archive->remove($timestamp);
+			}
+		}
+	}
+
+	if ( $errors_number > 0 ) {
+		log_msg("send_perf.pl::process_backlog(): $errors_number sending errors / $total_number lines", "LOG_ERR");
+	}
+}
+
+#
+# process_perfdata
+#
+# checks how to send perfdata and send them
+# backups are done in case of failure
+#
+sub process_perfdata {
 	my $message = shift;
-    my $archive = new N2Cacti::Archive({
-        archive_dir => "$backlog_dir",
-		rotation	=> "n",
-        basename    => "${hostname}_${service_name}.log",
-        log_msg     => \&log_msg});
-			
-	try{
-		if (-e $archive->{fullpath}){
-			print "put $$archive{fullpath}:$message\n";
-			&$cb_backup_perfdata($message);
-			&$cb_process_backlog;
+	my $archive = shift;
+
+	if ( defined($$opt{s}) ) {
+		if ( send_perfdata($message, $$opt{s} == 1 ) ) {
+			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
+			backup_perfdata($message, $archive) if ( defined $archive);
 		}
-		else{
-			print "file $$archive{fullpath} dont exist sending...\n";
-	        &$cb_send_perfdata($message, $$opt{l}) if (defined($$opt{l}));
-	        &$cb_send_perfdata($message, $$opt{H}, $$opt{p}) if (defined($$opt{H}) && defined($$opt{p}));
+	}
+
+	if ( defined($$opt{H}) && defined($$opt{p}) ) {
+		if ( send_perfdata($message, $$opt{H}, $$opt{p}) == 1 ) {
+			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
+			backup_perfdata($message, $archive) if ( defined $archive);
 		}
-    }
-    catch Error::Simple with{
-		&$cb_backup_perfdata($message);
-    };
-};
+	}
+}
 
+##########################################################################
+# Main
+##########################################################################
 
+if ( defined $archive ) {
+	if ( $archive->check_duplicates($$opt{d}) == 0 ) {
+		process_backlog($archive);
+	} else {
+		process_backlog($archive);
+		process_perfdata($$opt{d}, $archive);
+	}
+} else {
+	process_perfdata($$opt{d}, undef);
+}
 
-my $cb_main = sub {
-	&$cb_process_perfdata($$opt{d});
-	return 0;
-};
-
-exit &$cb_main;
-
-
-
-
-
-
-
+exit 0;
 

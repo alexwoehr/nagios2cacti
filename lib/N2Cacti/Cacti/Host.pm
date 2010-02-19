@@ -1,6 +1,7 @@
+# tsync::casole imola
 ###########################################################################
 #                                                                         #
-# N2Cacti::Cacti::Host                                                   #
+# N2Cacti::Cacti::Host                                                    #
 # Written by <detrak@caere.fr>                                            #
 #                                                                         #
 # This program is free software; you can redistribute it and/or modify it #
@@ -23,7 +24,7 @@ use DBI();
 use N2Cacti::Cacti;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
-use Error qw(:try);
+#use Exception qw(:try);
 
 BEGIN {
         use Exporter   	();
@@ -74,114 +75,113 @@ my $tables ={
 	};
 
 sub new {
-    # -- contient la definition des tables
-    my $class = shift;
+	# -- contient la definition des tables
+	my $class = shift;
 	my $attr=shift;
 	my %param = %$attr if $attr;
-    my $this={
-        tables                              => $tables,
-        hostname                            => $param{hostname},
-        hostaddress							=> $param{hostaddress},
-		source								=> $param{source} || "Nagios",
-		log_msg								=> $param{cb_log_msg}			|| \&default_log_msg,
-        };
+	my $this={
+		tables		=> $tables,
+		hostname	=> $param{hostname},
+		hostaddress	=> $param{hostaddress},
+		source		=> $param{source} || "Nagios"
+	};
 
 	#-- Connexion to cacti database
 	my $cacti_config = get_cacticonfig();
-	$this->{database} 						= new N2Cacti::database({
-        database_type       => $$cacti_config{database_type},
-        database_schema     => $$cacti_config{database_default},
-        database_hostname   => $$cacti_config{database_hostname},
-        database_username   => $$cacti_config{database_username},
-        database_password   => $$cacti_config{database_password},
-        database_port       => $$cacti_config{database_port},
-        log_msg				=> \&log_msg });
+	$this->{database} = new N2Cacti::database({
+		database_type		=> $$cacti_config{database_type},
+		database_schema		=> $$cacti_config{database_default},
+		database_hostname	=> $$cacti_config{database_hostname},
+		database_username	=> $$cacti_config{database_username},
+		database_password	=> $$cacti_config{database_password},
+		database_port		=> $$cacti_config{database_port},
+	});
 
-
-    $this->{database}->set_raise_exception(1); # for error detection with try/catch
+#	$this->{database}->set_raise_exception(1); # for error detection with try/catch
         
-    bless ($this, $class);
-    return $this;
+	bless ($this, $class);
+	return $this;
 }
 
 sub database{
-    return shift->{database};
+	return shift->{database};
 }
 
 sub table_save {
 	my $this = shift;
 	my $tablename=shift;
-	if(defined($this->{tables}->{$tablename})){
+	if ( defined($this->{tables}->{$tablename} ) ) {
 		return $this->database->sql_save(shift ,$tablename);
+	} else {
+		Main::log_msg("N2Cacti::Graph::table_save(): wrong parameter tablename value : $tablename", "LOG_ERR");
+		return undef;
 	}
-	die "N2Cacti::Graph::table_save - wrong parameter tablename value : $tablename";
 }
-
-
-sub log_msg {
-    my $this=shift;
-    my $message=shift;
-	$message=~ s/\n$//g;
-    &{$this->{log_msg}}("$message\n");
-}
-
 
 sub create_template {
-	my $this 		= shift;
-    my $template_name = "$$this{source} supervised host";
-    my $debug       = shift ||0;
+	my $this = shift;
+	my $template_name = "$$this{source} supervised host";
 
-    my $hash 		= generate_hash($template_name);
-    if(!$this->database->item_exist("host_template", {
-    	hash => $hash})){
-	    my $ht = $this->database->new_hash("host_template");
-	    $ht->{name}	= $template_name;
-	    $ht->{hash}	= $hash;
-	    $ht->{id}	= $this->table_save("host_template",$ht);
-	    return $ht->{id};
-	}
-	try {
-		return $this->database->get_id("host_template", {
-			hash => $hash });
-	}
-	catch Error::Simple with{
-		$this->log_msg('ERROR cant to find host_template');
-		die "ERROR cant to find host_template";
+	Main::log_msg("--> N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+
+	my $hash = generate_hash($template_name);
+
+	if(!$this->database->item_exist("host_template", {hash => $hash})){
+		Main::log_msg("N2Cacti::Cacti::Host::create_template(): let's create the host template", "LOG_DEBUG") if $this->{debug};
+
+		my $ht = $this->database->new_hash("host_template");
+
+		$ht->{name} = $template_name;
+		$ht->{hash} = $hash;
+		$ht->{id} = $this->table_save("host_template",$ht);
+
+		Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+		return $ht->{id};
+	} else {
+		Main::log_msg("N2Cacti::Cacti::Host::create_template(): the host template already exists", "LOG_DEBUG") if $this->{debug};
+
+		my $value = $this->{database}->get_id("host_template", {hash => $hash });
+
+		if ( not scalar $value ) {
+			Main::log_msg("N2Cacti::Cacti::Host::create_template(): cannot find host_template with hash : $hash", "LOG_ERR");
+			return undef;
+		} else {
+			Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+			return $value;
+		}
 	}
 }
 
 sub create_host {
-	my $this 		= shift;
-    my $debug       = shift ||0;
+	my $this = shift;
+ 
+	#-- create the template if needed else grab the id
+	my $ht_id = $this->create_template();
+	my $hostid;
+	my $h;
     
-    #-- create the template if needed else grab the id
-    my $ht_id		= $this->create_template($debug);
-    my $hostid;
-    my $h;
-    
-    #-- return if the item exist
-   if($this->database->item_exist("host",{
-    		host_template_id	=> $ht_id,
-    		description			=> $this->{hostname},
-    	})){
-    	$h = $this->database->db_fetch_hash("host",{
-    		host_template_id	=> $ht_id,
-    		description			=> $this->{hostname},
-    	});
-    	$h->{hostname}			= $this->{hostaddress};
-    	$h->{id}				= $this->table_save("host", $h);
-    }
-    else {	
-		$h						= $this->database->new_hash("host");
-		$h->{host_template_id} 	= $ht_id;
-		$h->{hostname}			= $this->{hostaddress}; #hostaddress in nagios will be the unique key to identify an host
-		$h->{description}		= $this->{hostname}; 	#hostname in nagios will be display
-		$h->{disabled}			= "on";					#the host are supervised by nagios, they are disable in cacti!
-		$h->{id}				= $this->table_save("host", $h);
-    }
-    return $h->{id};
-}
+	Main::log_msg("--> N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG") if $this->{debug};
 
+	#-- return if the item exist
+	if( $this->database->item_exist("host",{host_template_id => $ht_id, description => $this->{hostname},}) == 0 ) {
+		Main::log_msg("N2Cacti::Cacti::Host::create_host(): let's create the host", "LOG_DEBUG") if $this->{debug};
+
+		$h = $this->database->new_hash("host");
+		$h->{hostname} = $this->{hostaddress};
+		$h->{host_template_id} = $ht_id;
+		$h->{hostname} = $this->{hostaddress}; #hostaddress in nagios will be the unique key to identify an host
+		$h->{description} = $this->{hostname}; #hostname in nagios will be display
+		$h->{disabled} = "on"; #the host are supervised by nagios, they are disable in cacti!
+		$h->{id} = $this->table_save("host", $h);
+	} else {
+		Main::log_msg("N2Cacti::Cacti::Host::create_host(): the host already exists", "LOG_DEBUG") if $this->{debug};
+
+		$h->{id} = $this->database->get_id("host", {host_template_id => $ht_id, description => $this->{hostname},});
+	}
+
+	Main::log_msg("<-- N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG") if $this->{debug};
+	return $h->{id};
+}
 
 1;
 
