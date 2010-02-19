@@ -50,6 +50,7 @@ sub new {
 		template			=> "", 	# template name
 		service_name		=> "",	# service name (without @template_name else service_description in maps case)
 		rra_file			=> "", 	# template file .t
+		step				=> "300",
 		rrd_file 			=> "", 	# path to main rrd file (contains datasource in template.t file)
 		rrd_file_older		=> "",	# older path to rrd file, need to migrate file
 		perf_rrd_file		=> "",
@@ -197,7 +198,7 @@ sub update_rrd_el {
             $ngs_perf_table_create=1;
 		}
 
-        my $query = "REPLACE NGS_RESULT(date_check, host_id, service_id, state, execution_time, latency) 
+        my $query = "INSERT INTO NGS_RESULT(date_check, host_id, service_id, state, execution_time, latency) 
 				VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', '$state', '$execution', '$latency');";
         $database->execute($query);
 	}
@@ -333,11 +334,12 @@ sub update_rrd {
 		my $ds_names  = join(':',keys(%$perf_main));
 		my $ds_value = join(':',values(%$perf_main));
 
+		my $timestamp2=$timestamp - $timestamp % $this->{step};
 
-		RRDs::update( "$$this{rrd_file}", "--template", $ds_names, "$timestamp:$ds_value"  );
+		RRDs::update( "$$this{rrd_file}", "--template", $ds_names, "$timestamp2:$ds_value"  );
 	  	my $rrderror = RRDs::error;
 	  	
-		$this->log_msg ("update $$this{rrd_file} $ds_names with $ds_value at $timestamp") if ($$this{debug}||$rrderror);
+		$this->log_msg ("update $$this{rrd_file} $ds_names with $ds_value at $timestamp2") if ($$this{debug}||$rrderror);
         $this->log_msg ("Problem to update $$this{hostname};$$this{service_description};$$this{template} rrd: $rrderror") if ($rrderror);
 
 
@@ -396,7 +398,7 @@ sub update_rrd {
 			my $values = $ds_value;
 			$values =~ s/:/', '/g;
 			$values ="'$values'";
-			my $query = "replace $$this{template}(date_check, host_id, service_id, time,wday,mday,yday,week,month,year, `$keys`) VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', 
+			my $query = "INSERT INTO $$this{template}(date_check, host_id, service_id, time,wday,mday,yday,week,month,year, `$keys`) VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', 
 TIME(FROM_UNIXTIME('$timestamp')),
 DAYOFWEEK(FROM_UNIXTIME('$timestamp')), 
 DAYOFMONTH(FROM_UNIXTIME('$timestamp')),
@@ -601,9 +603,12 @@ sub initialize {
  	my 	$hash    				= RRDs::info $this->{rrd_file} if (-f  $this->{rrd_file} );
     if (-f  $this->{rrd_file} && !RRDs::error){ # get parameter from rrd file
     	$this->log_msg(__LINE__ . "\tDetermine parameter from rrd_file") if $$this{debug};
-		my $data                = {ds => {}, rra => {}};
+		my $data                = {ds => {}, rra => {},};
+		$this->{step}=$hash->{step};
+		$this->log_msg(__LINE__."\tstep $$this{step} for rrd_file:$$this{rrd_file}") if $$this{debug};
+		
+		
 	    foreach my $id (keys %$hash){
-
 #	        next if ($id !~m/^DS/i and $id !~ /^rra/);
    	        next if ($id !~ m/^DS/i); # we dont use rra parameter only ds
 #  	        $this->log_msg(__LINE__."\t$id")if $$this{debug};
@@ -656,6 +661,11 @@ sub initialize {
             s/#.*//;         # Remove partial comments
             chomp;
 			push @$t_params, $_;
+            if($_ =~ m/-s (\d+)/i){
+                $this->{step}=$1;
+				$this->log_msg(__LINE__."\tstep $$this{step} for rra_file: $$this{rra_file}") if $$this{debug};
+
+            }
 
             next if !m/^DS/i;  # Skip no DS definition line
 	        foreach my $k ( keys %$ds_rewrite ) {
