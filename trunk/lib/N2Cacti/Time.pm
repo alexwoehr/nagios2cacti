@@ -1,3 +1,5 @@
+# tsync::casole imola
+# sync::grado
 ###########################################################################
 #                                                                         #
 # N2Cacti::Time                                                           #
@@ -19,18 +21,17 @@ use strict;
 package N2Cacti::Time;
 
 BEGIN {
-        use Exporter   ();
-        use vars       qw($VERSION @ISA @EXPORT @EXPORT_OK);
-        @ISA = qw(Exporter);
-        @EXPORT = qw(get_time_forday);
+	use Exporter   ();
+	use vars       qw($VERSION @ISA @EXPORT @EXPORT_OK);
+	@ISA = qw(Exporter);
+	@EXPORT = qw(get_time_forday);
 }   
 
 sub get_time_forday {
-    my $date = shift;
-    my $time = shift;
-    return &Date::Manip::UnixDate(&Date::Manip::ParseDate($date." ".$time),"%s");
+	my $date = shift;
+	my $time = shift;
+	return &Date::Manip::UnixDate(&Date::Manip::ParseDate($date." ".$time),"%s");
 }
 
-
-
 1;
+
