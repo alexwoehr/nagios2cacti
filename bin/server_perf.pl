@@ -1,5 +1,4 @@
 #!/usr/bin/perl
-# tsync::casole
 ############################################################################
 ##                                                                         #
 ## perf2rrd.pl                                                             #
@@ -24,7 +23,8 @@ package Main;
 ################################################################################
 # Initialisation
 ################################################################################
-use lib qw(. /HOME/uxwadm/scripts/nagios/n2cacti/lib);
+# put the lib in perl path or customize "use lib"
+#use lib qw(.);
 use Cwd;
 use Cwd 'abs_path';
 require Sys::Syslog;

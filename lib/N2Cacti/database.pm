@@ -1,4 +1,3 @@
-# tsync::casole
 ###########################################################################
 #                                                                         #
 # connector MOM                                                           #
@@ -19,7 +18,6 @@
 
 package N2Cacti::database;
 use DBI();
-#use Exception qw(:try);
 
 BEGIN {
         use Exporter   	();

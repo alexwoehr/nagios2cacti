@@ -1,4 +1,3 @@
-# tsync::casole imola
 ###########################################################################
 #                                                                         #
 # N2Cacti::Cacti::Graph                                                   #
@@ -24,7 +23,6 @@ use DBI();
 use N2Cacti::Cacti;
 use N2Cacti::database;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
-#use Exception qw(:try);
 
 BEGIN {
 	use Exporter   	();
@@ -82,8 +80,6 @@ sub new {
 		database_password	=> $$cacti_config{database_password},
 		database_port		=> $$cacti_config{database_port}
 	});
-
-#	$this->{database}->set_raise_exception(1); # for error detection with try/catch
         
 	bless ($this, $class);
 

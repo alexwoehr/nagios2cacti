@@ -36,7 +36,8 @@ use Cwd 'abs_path';
 my $chdir=abs_path($0);
 $chdir =~ s/\/[^\/]+$//g;
 chdir($chdir);
-use lib qw(. ./lib /usr/lib/N2Cacti/lib);
+# put the lib in perl path or customize "use lib"
+#use lib qw(.);
 
 use Error qw(:try);
 

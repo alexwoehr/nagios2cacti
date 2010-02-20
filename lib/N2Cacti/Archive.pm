@@ -1,5 +1,3 @@
-# tsync::casole imola
-# sync::grado
 use strict;
 
 package N2Cacti::Archive;
@@ -85,17 +83,7 @@ sub put {
 		return 1;
 	}
 
-	$query = "SELECT count(*) FROM log WHERE timestamp = '$data_tab[4]';";
-	$sth = $this->{io}->prepare($query);
-	$sth->execute();
-
-	@result = $sth->fetchrow_array;
-
-	if ( $result[0] == 0 ) {
-		$query = "INSERT INTO log (timestamp, data) VALUES ('$data_tab[4]', '$data');";
-	} else {	
-		$query = "UPDATE OR REPLACE log SET timestamp = '$data_tab[4]', data = '$data' WHERE timestamp = '$data_tab[4]';";
-	}
+	$query = "REPLACE log SET timestamp = '$data_tab[4]', data = '$data' WHERE timestamp = '$data_tab[4]';";
 
 	if ( $this->{io}->do($query) ) {
 		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG") if $this->{debug};
