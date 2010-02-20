@@ -1,5 +1,3 @@
-# tsync::casole imola
-# sync::grado
 ###########################################################################
 #                                                                         #
 # N2Cacti::Config                                                         #
@@ -75,7 +73,7 @@ our $process_name = "N2Cacti";
 
 sub get_config {
 	if ( $config_loaded == 0 ) {
-		return load_config(shift or "/HOME/uxwadm/scripts/nagios/n2cacti/etc/n2cacti.conf");
+		return load_config(shift or "/etc/n2cacti.conf");
 	}
 	return $config;
 }

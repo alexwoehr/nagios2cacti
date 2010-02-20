@@ -1,6 +1,4 @@
 #!/usr/bin/perl -w
-# tsync::casole imola
-# sync::grado
 # nagios: -epn
 # disable Embedded Perl Interpreter for nagios 3.0
 ############################################################################
@@ -21,14 +19,16 @@
 ############################################################################
 #
 #$USER1$/n2rrd.pl -d -c /etc/n2rrd/n2rrd.conf -T $LASTSERVICECHECK$ -H $HOSTNAME$ -s "$SERVICEDESC$" -o "$SERVICEPERFDATA$" -a $HOSTADDRESS$
-#send_perf
-#--> ecriture dans un fichier d'archivage
-#--> lecture du backlog
-#--> envoie udp àhaque demon enregistré   echec de l'envoie
-#    --> ecriture des informations dans un fichiers de backlog
-#    erreur de l'envoie (format invalide)
-#    --> ecriture des informations dans un fichiers de log
+#send_perf algorithms: 
+#if backlog exist
+#--> reading backlog
+#--> sending backlog & data via udp to each daemon register 
+#if sending failed
+#--> writing data in backlog
+#if data format is invalid
+#--> writing log information to syslog
 #
+# module CPAN dependency
 # http://search.cpan.org/~behroozi/IO-Socket-SSL-0.97/SSL.pm
 # perl -MCPAN -e 'install IO::Socket::SSL'
 # perl -MCPAN -e 'install IO::Socket::UNIX'
@@ -48,7 +48,8 @@ package Main;
 
 require Sys::Syslog;
 
-use lib qw(. /HOME/uxwadm/scripts/nagios/n2cacti/lib);
+# put the lib in perl path or customize "use lib"
+#use lib qw(.);
 use Getopt::Std;
 
 use N2Cacti::Archive;

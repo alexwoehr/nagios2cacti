@@ -25,7 +25,8 @@ my $chdir=abs_path($0);
 $chdir =~ s/\/[^\/]+$//g;
 chdir($chdir);
 
-use lib qw(. ./lib);
+# put the lib in perl path or customize "use lib"
+#use lib qw(.);
 use RRDs;
 use Getopt::Std;
 use Fcntl;             # for sysopen

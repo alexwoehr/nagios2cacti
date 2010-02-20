@@ -1,4 +1,3 @@
-# tsync::casole
 ###########################################################################
 #                                                                         #
 # N2Cacti::Oreon                                                          #
@@ -33,7 +32,6 @@ sub new {
 
 	my $this = {};
 	$this->{oreon_dir}	= $param{oreon_dir}||"/usr/lib/oreon";
-	#$this->{config}= &N2Cacti::Config::load_config();
 	bless($this,$class);
 	$this->load_config_database();
 	$this->{database} = new N2Cacti::database({

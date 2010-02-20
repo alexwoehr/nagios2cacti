@@ -45,7 +45,8 @@ use base 'Error::Simple';
 1;
 
 package main;
-use lib qw(. ./lib /usr/lib/N2Cacti/lib);
+# put the lib in perl path or customize "use lib"
+#use lib qw(.);
 use Getopt::Std;
 use N2Cacti::Archive;
 use N2Cacti::Config;
