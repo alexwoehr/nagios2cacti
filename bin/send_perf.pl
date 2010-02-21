@@ -96,25 +96,25 @@ my $archive = new N2Cacti::Archive({
 ##########################################################################
 
 sub log_msg {
-        my $str = shift;
-        my $level = shift;
+    my $str = shift;
+    my $level = shift;
 
-        if ( $level =~ /^$/ ) {
-                $level = "LOG_INFO";
-        }
+    if ( $level =~ /^$/ ) {
+        $level = "LOG_INFO";
+    }
 
 	if ( $level =~ /LOG_DEBUG/ and defined $opt->{v} ) {
 		return undef;
 	}	
 
-        chomp $str;
+    chomp $str;
 
 #        if ( defined ($opt->{d}) ) {
 #                Sys::Syslog::openlog("n2cacti", "ndelay", "LOG_DAEMON");
 #                Sys::Syslog::syslog($level, $str);
 #                Sys::Syslog::closelog();
 #        } else {
-                print "$level:\t$str\n";
+    print "$level:\t$str\n";
 #        }
 }
 
@@ -242,20 +242,23 @@ sub process_backlog {
 
 	$backlog = $archive->fetch();
 
-	foreach $timestamp (keys %$backlog) {
+	while(my ($key, $data)=each(%$backlog)){
 		$total_number++;
-
+		my $failed=0;
 		if ( defined($$opt{s}) eq 1 ) {
-			if ( send_perfdata($backlog->{$timestamp}, $$opt{s}) eq 0 ) {
-				$archive->{io}->remove($timestamp);
+			if ( send_perfdata($data->{'data'}, $$opt{s}) == 1 ) {
+				$failed=1;
 			}
 		}
 
 		if ( (defined($$opt{H}) and defined($$opt{p})) ) {
-			if ( send_perfdata($backlog->{$timestamp}, $$opt{H}, $$opt{p}) eq 0 ) {
-				$archive->remove($timestamp);
+			if ( send_perfdata($backlog->{$timestamp}, $$opt{H}, $$opt{p}) == 1 ) {
+				$failed=1;
 			}
 		}
+
+		# we purge the backlog only if we dont have any failed
+		$archive->{io}->remove($data->{'timestamp'}, $data->{'hash'})	if $failed==1;
 	}
 
 	if ( $errors_number > 0 ) {

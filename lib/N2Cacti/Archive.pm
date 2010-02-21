@@ -6,6 +6,8 @@ use N2Cacti::Time;
 use IO::Handle; #fdopen
 use File::Basename;
 use DBI;
+use Digest::MD5 qw(md5 md5_hex md5_base64);
+
 
 BEGIN {
         use Exporter();
@@ -83,7 +85,7 @@ sub put {
 		return 1;
 	}
 
-	$query = "REPLACE log SET timestamp = '$data_tab[4]', data = '$data' WHERE timestamp = '$data_tab[4]';";
+	$query = "REPLACE log SET timestamp = '$data_tab[4]', data = '$data', hash='".md5_hex($data)."' WHERE timestamp = '$data_tab[4]';";
 
 	if ( $this->{io}->do($query) ) {
 		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG") if $this->{debug};
@@ -183,11 +185,12 @@ sub open_daily {
 
 #
 # create the DB's structure
+# use timestamp and md5 of data as key
 #
 sub init {
 	my $this = shift;
 
-	my $query = "CREATE TABLE log ( 'timestamp' INTEGER, 'data' BLOB, CONSTRAINT cle PRIMARY KEY ( 'timestamp') )";
+	my $query = "CREATE TABLE log ( 'timestamp' INTEGER, 'data' BLOB, 'hash' char(16) CONSTRAINT cle PRIMARY KEY ( 'timestamp','hash') )";
 
 	if ( not defined $this->{io}) {
 		$this->{io}->open();
@@ -213,7 +216,7 @@ sub init {
 sub fetch {
 	my $this = shift;
 
-	my $query = "SELECT timestamp, data FROM log ORDER BY timestamp;";
+	my $query = "SELECT timestamp, hash, data FROM log ORDER BY timestamp ASC;";
 	my $data = {};
 	my $sth;
 	my @result;
@@ -225,7 +228,7 @@ sub fetch {
 	}
 
 	while ( @result = $sth->fetchrow_array() ) {
-		$data->{$result[0]} = $result[1];
+		$data->{$result[0]."_".$result[1]} = { hash => $result[1, data => $result[2], timestamp=>$result[0]};
 	}
 
 	return $data;
@@ -242,8 +245,9 @@ sub fetch {
 sub remove {
 	my $this = shift;
 	my $timestamp = shift;
+	my $hash = shift;
 
-	my $query = "DELETE FROM log WHERE timestamp = '$timestamp';";
+	my $query = "DELETE FROM log WHERE timestamp = '$timestamp' and hash='$hash';";
 
 	if ( $this->{io}->do($query) ) {
 		return 0;
@@ -273,7 +277,7 @@ sub check_duplicates {
 	$this->open();
 	chomp $data;
 
-	$query = "SELECT count(*) FROM log WHERE timestamp = '$data_tab[4]';";
+	$query = "SELECT count(*) FROM log WHERE timestamp = '$data_tab[4]' AND hash='".md5_hex($data)."';";
 	$sth = $this->{io}->prepare($query);
 	$sth->execute();
 
