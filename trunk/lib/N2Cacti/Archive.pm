@@ -228,7 +228,7 @@ sub fetch {
 	}
 
 	while ( @result = $sth->fetchrow_array() ) {
-		$data->{$result[0]."_".$result[1]} = { hash => $result[1, data => $result[2], timestamp=>$result[0]};
+		$data->{$result[0]."_".$result[1]} = { hash => $result[1], data => $result[2], timestamp=>$result[0]};
 	}
 
 	return $data;
