@@ -83,7 +83,7 @@ sub load_config {
 	my $line   		= 0;
 	$config_loaded	= 1;
 
-	open CONF, '<', "$config_file" or Main::log_msg("N2Cacti::Config::load_config(): cannot open file $config_file : $! ", "LOG_ALARM") and return undef;
+	open CONF, '<', "$config_file" or Main::log_msg("N2Cacti::Config::load_config(): cannot open file $config_file : $! ", "LOG_ALERT") and return undef;
 
 	#
 	# Parse configuration file
