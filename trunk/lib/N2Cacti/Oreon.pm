@@ -40,8 +40,7 @@ sub new {
 		database_hostname	=> $this->{oreon_config}->{host}|| "localhost",
 		database_username	=> $this->{oreon_config}->{user},
 		database_password	=> $this->{oreon_config}->{password},
-		database_port		=> "3306",
-		debug			=> $param{debug}
+		database_port		=> "3306"
 	});
     return $this;
 }
@@ -80,12 +79,14 @@ sub searchHost {
 
 
 sub createHost {
-	my $this 		= shift;
+	my $this 	= shift;
 	my $tpl_name	= shift;
-    my $attr 		= shift;
-	my $debug		= shift || 0;
+	my $attr 	= shift;
+
+	my %param 	= %$attr if $attr;
+
 	my ($template, $host);
-    my %param 		= %$attr if $attr;
+
 	return undef if (!defined($attr));
 	
 
@@ -102,7 +103,7 @@ sub createHost {
 		print "host $param{host_name} not found, we will create\n";
 		$template	= $this->searchTemplate("host", $tpl_name);
 		unless(defined($template)){
-			Main::log_msg("N2Cacti::Oreon::createHost(): template $tpl_name not found", "LOG_DEBUG") if $debug;
+			Main::log_msg("N2Cacti::Oreon::createHost(): template $tpl_name not found", "LOG_DEBUG");
 			return undef;
 		}
 		
@@ -113,7 +114,7 @@ sub createHost {
 				$host->{$key} = $value;
 			#}
 			#else{
-			#	Main::log_msg("N2Cacti::Oreon::createHost(): fields $key unknow in table host", "LOG_DEBUG") if $debug;
+			#	Main::log_msg("N2Cacti::Oreon::createHost(): fields $key unknow in table host", "LOG_DEBUG");
 			#}
 		}
 		$host->{host_template_model_htm_id} = $template->{host_id};
@@ -155,7 +156,7 @@ sub addGroupHost{
 	$group 		= $this->database->db_fetch_hash("hostgroup", { hg_alias => $groupName}) if (!defined($group));
 
 	if(!defined($group)){
-		Main::log_msg("N2Cacti::Oreon::addGroupHost(): the hostgroup $groupName not found! we will create it", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Oreon::addGroupHost(): the hostgroup $groupName not found! we will create it", "LOG_DEBUG");
 		$group = $this->database->new_hash("hostgroup");
 		$group->{hg_alias}			= $groupName;
 		$group->{hg_name}			= $groupName;
@@ -205,7 +206,7 @@ sub load_config_database {
 	Main::log_msg("N2Cacti::Oreon::load_config_database(): cannot find Oreon configuration at $oreon_path", "LOG_CRIT") if (! -f $oreon_path);
 
 	open CFG, '<', $oreon_path
-        or Main::log_msg("N2Cacti::Oreon::createHost():unable to open $oreon_path", "LOG_DEBUG") if $this->{debug};
+        or Main::log_msg("N2Cacti::Oreon::createHost():unable to open $oreon_path", "LOG_DEBUG");
 	$this->{oreon_config}={host=>'', user=>'', password=>'', db=>'', ods=>''};
 
     while(<CFG>){
@@ -225,7 +226,7 @@ sub load_config_database {
                 $this->{oreon_config}->{$1}=$2;
             }
             else{
-                Main::log_msg("N2Cacti::Oreon::load_config_database(): oreon configuration parameter unknown : $1 = $2", "LOG_DEBUG") if $this->{debug};
+                Main::log_msg("N2Cacti::Oreon::load_config_database(): oreon configuration parameter unknown : $1 = $2", "LOG_DEBUG");
             }
    		}
 	}

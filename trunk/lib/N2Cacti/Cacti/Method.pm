@@ -84,9 +84,8 @@ sub table_save {
 sub create_method {
 	my $this = shift;
 	my $command_name = "$$this{source} import via n2cacti";
-	my $debug = shift || 0;
 
-	Main::log_msg("--> N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG") if $debug;
+	Main::log_msg("--> N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG");
 	my $hash = generate_hash($command_name);
 
 	if( $this->database->item_exist("data_input", {hash => $hash}) == 0 ){
@@ -96,11 +95,11 @@ sub create_method {
 		$di->{type_id} = "1";
 		$di->{id} = $this->table_save("data_input",$di);
 
-		Main::log_msg("<-- N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG") if $debug;
+		Main::log_msg("<-- N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG");
 		return $di->{id};
 	} else {
 		my $id = database->get_id("data_input", {hash => $hash });
-		Main::log_msg("<-- N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG") if $debug;
+		Main::log_msg("<-- N2Cacti::Cacti::Method::create_method()", "LOG_DEBUG");
 		return $id;
 	}
 }

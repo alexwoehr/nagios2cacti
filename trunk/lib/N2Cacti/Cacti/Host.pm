@@ -121,12 +121,12 @@ sub create_template {
 	my $this = shift;
 	my $template_name = "$$this{source} supervised host";
 
-	Main::log_msg("--> N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG");
 
 	my $hash = generate_hash($template_name);
 
 	if(!$this->database->item_exist("host_template", {hash => $hash})){
-		Main::log_msg("N2Cacti::Cacti::Host::create_template(): let's create the host template", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Host::create_template(): let's create the host template", "LOG_DEBUG");
 
 		my $ht = $this->database->new_hash("host_template");
 
@@ -134,10 +134,10 @@ sub create_template {
 		$ht->{hash} = $hash;
 		$ht->{id} = $this->table_save("host_template",$ht);
 
-		Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG");
 		return $ht->{id};
 	} else {
-		Main::log_msg("N2Cacti::Cacti::Host::create_template(): the host template already exists", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Host::create_template(): the host template already exists", "LOG_DEBUG");
 
 		my $value = $this->{database}->get_id("host_template", {hash => $hash });
 
@@ -145,7 +145,7 @@ sub create_template {
 			Main::log_msg("N2Cacti::Cacti::Host::create_template(): cannot find host_template with hash : $hash", "LOG_ERR");
 			return undef;
 		} else {
-			Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG");
 			return $value;
 		}
 	}
@@ -159,11 +159,11 @@ sub create_host {
 	my $hostid;
 	my $h;
     
-	Main::log_msg("--> N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG");
 
 	#-- return if the item exist
 	if( $this->database->item_exist("host",{host_template_id => $ht_id, description => $this->{hostname},}) == 0 ) {
-		Main::log_msg("N2Cacti::Cacti::Host::create_host(): let's create the host", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Host::create_host(): let's create the host", "LOG_DEBUG");
 
 		$h = $this->database->new_hash("host");
 		$h->{hostname} = $this->{hostaddress};
@@ -173,12 +173,12 @@ sub create_host {
 		$h->{disabled} = "on"; #the host are supervised by nagios, they are disable in cacti!
 		$h->{id} = $this->table_save("host", $h);
 	} else {
-		Main::log_msg("N2Cacti::Cacti::Host::create_host(): the host already exists", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Host::create_host(): the host already exists", "LOG_DEBUG");
 
 		$h->{id} = $this->database->get_id("host", {host_template_id => $ht_id, description => $this->{hostname},});
 	}
 
-	Main::log_msg("<-- N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Host::create_host()", "LOG_DEBUG");
 	return $h->{id};
 }
 

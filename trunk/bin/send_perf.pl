@@ -46,6 +46,7 @@ use warnings;
 
 package Main;
 
+use lib '/HOME/uxwadm/scripts/n2cacti/lib';
 require Sys::Syslog;
 
 # put the lib in perl path or customize "use lib"
@@ -68,6 +69,7 @@ getopts( "H:p:d:s:C:v", $opt );
 # Arguments check
 if ( ( ( ! defined($$opt{H}) || ! defined($$opt{p}) ) && ! defined($$opt{s}) ) || ! defined($$opt{d}) ) {
 	print "$0 parameter: 
+-v		: verbose mode
 -H <hostname>	:perf2rrd server hostname
 -p <port>		: perf2rrd server port
 -s <localpath>	: transmission with local AF_UNIX protocol
@@ -96,26 +98,20 @@ my $archive = new N2Cacti::Archive({
 ##########################################################################
 
 sub log_msg {
-    my $str = shift;
-    my $level = shift;
+	my $str = shift;
+	my $level = shift;
 
-    if ( $level =~ /^$/ ) {
-        $level = "LOG_INFO";
-    }
+	if ( $level =~ /^$/ ) {
+		$level = "LOG_INFO";
+	}
 
 	if ( $level =~ /LOG_DEBUG/ and defined $opt->{v} ) {
 		return undef;
 	}	
 
-    chomp $str;
+	chomp $str;
 
-#        if ( defined ($opt->{d}) ) {
-#                Sys::Syslog::openlog("n2cacti", "ndelay", "LOG_DAEMON");
-#                Sys::Syslog::syslog($level, $str);
-#                Sys::Syslog::closelog();
-#        } else {
-    print "$level:\t$str\n";
-#        }
+	print "$level:\t$str\n";
 }
 
 #-- backup perfdata in backlog before processed
@@ -242,18 +238,18 @@ sub process_backlog {
 
 	$backlog = $archive->fetch();
 
-	while(my ($key, $data)=each(%$backlog)){
+	while ( my ($key, $data) = each(%$backlog) ) {
 		$total_number++;
 		my $failed=0;
 		if ( defined($$opt{s}) eq 1 ) {
 			if ( send_perfdata($data->{'data'}, $$opt{s}) == 1 ) {
-				$failed=1;
+				$failed = 1;
 			}
 		}
 
 		if ( (defined($$opt{H}) and defined($$opt{p})) ) {
 			if ( send_perfdata($backlog->{$timestamp}, $$opt{H}, $$opt{p}) == 1 ) {
-				$failed=1;
+				$failed = 1;
 			}
 		}
 
@@ -263,6 +259,8 @@ sub process_backlog {
 
 	if ( $errors_number > 0 ) {
 		log_msg("send_perf.pl::process_backlog(): $errors_number sending errors / $total_number lines", "LOG_ERR");
+	} else {
+		log_msg("send_perf.pl::process_backlog(): $total_number backlog lines processed without any error", "LOG_INFO");
 	}
 }
 
@@ -279,14 +277,14 @@ sub process_perfdata {
 	if ( defined($$opt{s}) ) {
 		if ( send_perfdata($message, $$opt{s} == 1 ) ) {
 			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
-			backup_perfdata($message, $archive) if ( defined $archive);
+			backup_perfdata($message, $archive) if ( defined $archive );
 		}
 	}
 
 	if ( defined($$opt{H}) && defined($$opt{p}) ) {
 		if ( send_perfdata($message, $$opt{H}, $$opt{p}) == 1 ) {
 			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
-			backup_perfdata($message, $archive) if ( defined $archive);
+			backup_perfdata($message, $archive) if ( defined $archive );
 		}
 	}
 }

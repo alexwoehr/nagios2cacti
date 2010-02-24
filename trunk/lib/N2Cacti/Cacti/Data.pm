@@ -50,11 +50,10 @@ sub new {
 		hostname		=> $param{hostname},
 		service_description	=> $param{service_description},
 		rrd			=> $param{rrd}, # rrd provide template, datasource and path_rrd now!
-		source			=> $param{source} || "Nagios",
-		debug			=> $param{debug}
+		source			=> $param{source} || "Nagios"
 	};
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::new()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::new()", "LOG_DEBUG");
 
 	$this->{template} = $this->{rrd}->getTemplate();
 	$this->{service_name} = $this->{rrd}->getServiceName();
@@ -75,7 +74,7 @@ sub new {
         
 	bless ($this, $class);
 
-	Main::log_msg("<-- N2Cacti::Cacti::Data::new()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::new()", "LOG_DEBUG");
 	return $this;
 }
 
@@ -92,14 +91,13 @@ sub database{
 # -------------------------------------------------------------
 sub get_input {
 	my $this = shift;
-	my $debug=shift||0;
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG");
 
-	my $method = new N2Cacti::Cacti::Method({source => $$this{source},debug=>$debug });
+	my $method = new N2Cacti::Cacti::Method({ source => $$this{source} });
 	my $input = $method->create_method();
 
-	Main::log_msg("<-- N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG");
 	return $input;
 }
 
@@ -107,11 +105,11 @@ sub get_input {
 sub template_exist {
 	my $this=shift;
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG");
 
 	my $result = $this->database->item_exist("data_template", { hash => generate_hash($this->{data_template_name}) });
 
-	Main::log_msg("<-- N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG");
 
 	return $result;
 }
@@ -121,7 +119,7 @@ sub table_save {
 	my $tablename=shift;
 	my $result = undef;
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::table_save()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::table_save()", "LOG_DEBUG");
 
 	if ( defined($this->{tables}->{$tablename}) ) {
 		$result = $this->database->sql_save(shift ,$tablename);
@@ -129,7 +127,7 @@ sub table_save {
 		Main::log_msg("N2Cacti::Cacti::Data::table_save(): wrong parameter tablename value : $tablename", "LOG_ERR");
 	}
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::table_save()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::table_save()", "LOG_DEBUG");
 
 	return $result;
 }
@@ -138,7 +136,7 @@ sub table_save {
 sub create_individual_instance {
 	my $this = shift;
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG");
 
 	my $main_rrd = $this->{rrd}->getPathRRD();
 	my $data_template_name = $this->{data_template_name};
@@ -157,23 +155,22 @@ sub create_individual_instance {
 	$this->{rrd}->setPathRRD($main_rrd);
 	$this->{data_template_name} = $data_template_name;
 	$this->{data_template_data_name} = $data_template_data_name;
-	Main::log_msg("<-- N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG");
 }
 
 
 # -------------------------------------------------------------
 sub create_instance {
 	my $this		= shift;
-	my $debug 		= shift ||0;
 	my %ids			= ();
 	my $source 		= $this->{source};
 	my ($dl, $dtd, $dtdt);
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::create_instance($$this{hostname},$$this{service_description})", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::create_instance($$this{hostname},$$this{service_description})", "LOG_DEBUG");
 	
 	#-- if template dont exist, we must create it!
 	if( $this->template_exist == 0 ) {
-		$dtdt = $this->create_template(shift||0,$debug);
+		$dtdt = $this->create_template(shift||0);
 	#} else {
 	}
 		$this->database->begin();
@@ -203,12 +200,12 @@ sub create_instance {
 				$dtd->{data_input_id} = $this->database->get_id("data_input", { name => "$$this{source} import via n2cacti" });
 				$dtd->{name_cache} =~ s/\|host_description\|/$$this{hostname}/g;
 				$dtd->{id} = $this->table_save("data_template_data", $dtd);
-				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): saving data_template_data($$dtd{id}", "LOG_DEBUG") if $this->{debug};
+				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): saving data_template_data($$dtd{id}", "LOG_DEBUG");
 			#}
 
-			$dtd = $this->database->db_fetch_hash("data_template_data", { data_template_id => $ids{data_template_id}, local_data_id => 0},$debug);
+			$dtd = $this->database->db_fetch_hash("data_template_data", { data_template_id => $ids{data_template_id}, local_data_id => 0});
 			
-			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): $ids{data_template_id} - $$dtd{id}", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): $ids{data_template_id} - $$dtd{id}", "LOG_DEBUG");
 
 			#$ids{data_template_data_id}=$dtd->{id}; 		
 
@@ -219,11 +216,11 @@ sub create_instance {
 			if( $this->database->item_exist("data_local", { host_id => $ids{host_id}, data_template_id=>$ids{data_template_id}}) == 1 ){
 				$dl = $this->database->db_fetch_hash("data_local", { host_id => $ids{host_id}, data_template_id=>$ids{data_template_id}});
 
-				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): data_local for host [$$this{hostname}] and service [$$this{service_description}] exist", "LOG_DEBUG") if $this->{debug};
+				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): data_local for host [$$this{hostname}] and service [$$this{service_description}] exist", "LOG_DEBUG");
 				return $dl->{id};
 			}
 
-			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): creating rra", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): creating rra", "LOG_DEBUG");
 			#-- creating rra (we're creating four RRA (daily, weekly, monthly, yearly)
 			$this->database->execute("delete from data_template_data_rra where data_template_data_id='$$dtd{id}'");
 			for (my $i=0;$i<4;$i++){
@@ -233,9 +230,9 @@ sub create_instance {
 				$this->table_save("data_template_data_rra", $dtrra);
 			}
 	
-			Main::log_msg( "N2Cacti::Cacti::Data::create_instance(): commit", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg( "N2Cacti::Cacti::Data::create_instance(): commit", "LOG_DEBUG");
 			$this->database->commit();
-			Main::log_msg( "<-- N2Cacti::Cacti::Data::create_instance() with commit", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg( "<-- N2Cacti::Cacti::Data::create_instance() with commit", "LOG_DEBUG");
 			
 			#-- creation des datasources
 			return $dl->{id};
@@ -251,7 +248,7 @@ sub create_template {
 	my $source = $this->{source};
 	my ($dtd, $dt);
 
-	Main::log_msg("--> N2Cacti::Cacti::Data::create_template()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::create_template()", "LOG_DEBUG");
 
 	if($this->template_exist == 0){
 		$this->database->begin();
@@ -262,7 +259,7 @@ sub create_template {
 			$dt->{hash} = generate_hash($this->{data_template_name});
 			$dt->{id} = $this->table_save("data_template", $dt);
 
-			Main::log_msg("N2Cacti::Cacti::Data::create_template(): save data_template ($$dt{id})", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::create_template(): save data_template ($$dt{id})", "LOG_DEBUG");
 	
 			# -- define data_template parameter
 			$dtd = $this->database->new_hash("data_template_data");
@@ -282,8 +279,8 @@ sub create_template {
 			$dtd->{name_cache}			= "";
 			$dtd->{id}				= $this->table_save("data_template_data", $dtd);
 
-			Main::log_msg("N2Cacti::Cacti::Data::create_template(): saving data_template_data($$dtd{id})", "LOG_DEBUG") if $this->{debug};
-			Main::log_msg("N2Cacti::Cacti::Data::create_template(): creating rra for the instance", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::create_template(): saving data_template_data($$dtd{id})", "LOG_DEBUG");
+			Main::log_msg("N2Cacti::Cacti::Data::create_template(): creating rra for the instance", "LOG_DEBUG");
 	
 			#-- creating rra (we're creating four RRA (daily, weekly, monthly, yearly)
 			$this->database->execute("delete from data_template_data_rra where data_template_data_id='$$dtd{id}'");
@@ -294,7 +291,7 @@ sub create_template {
 				$this->table_save("data_template_data_rra", $dtrra);
 			}
 	
-			Main::log_msg("N2Cacti::Cacti::Data::create_template(): commit()", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::create_template(): commit()", "LOG_DEBUG");
 			# if this is reached, queries succeeded; commit them
 			$this->database->commit();
 		};
@@ -303,7 +300,7 @@ sub create_template {
 		Main::log_msg("N2Cacti::Cacti::Data::create_template(): rollback :  $@", "LOG_ERR") if $@;
 	}
 
-	Main::log_msg("<-- N2Cacti::Cacti::Data::create_template()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::create_template()", "LOG_DEBUG");
 	return $dtd->{id};
 }
 
@@ -317,7 +314,7 @@ sub update_rrd {
 	my $source = $this->{source};
 	my ($hostid, $dt, $dtd, $dl);
 	
-	Main::log_msg("--> N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG");
 
 	# -- got templates (must exist)
 	if ( ! $this->database->item_exist( "host", { description => $$this{hostname}} ) ) {
@@ -340,11 +337,11 @@ sub update_rrd {
 	}
 
 	if ( $hostid == undef or $dt == undef or $dtd == undef or $dl ) {
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): cannot get hashes from database", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): cannot get hashes from database", "LOG_DEBUG");
 	}
 
 	# -- we initiate all datasource to be delete
-	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): init all existing datasource to be delete, update or create", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): init all existing datasource to be delete, update or create", "LOG_DEBUG");
 	my $sth = $this->database->execute("SELECT data_source_name FROM data_template_rrd WHERE data_template_id ='$$dt{id}'");
 	while (my @row=$sth->fetchrow()){
 		$state->{$row[0]}="del";
@@ -353,7 +350,7 @@ sub update_rrd {
 	# -- datasource create or update
 	while ( my ($key, $ds) = each (%$datasource) ) {
 		next if ($ds->{rrd_file} ne $this->{rrd}->{rrd_file}); # skip individual rrd
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create or update data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create or update data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG");
 
 		# -- define the datasource state
 		if( ! defined($state->{$ds->{ds_name}}) ) {
@@ -362,13 +359,13 @@ sub update_rrd {
 			$state->{$ds->{ds_name}} = "update";
 		}
 
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): creating data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): creating data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG");
 		$this->database->begin();
 
 		eval {
 			my $dtr = {};
 			if ( $state->{$ds->{ds_name}} eq "new" ) {
-				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};	
+				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG");	
 
 				$dtr = $this->database->new_hash("data_template_rrd");
 				$dtr->{hash} = generate_hash($$ds{ds_name}.generate_hash($$this{data_template_name}));
@@ -388,7 +385,7 @@ sub update_rrd {
 			}
 
 			# -- load the instance if existing
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): load data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};	
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): load data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG");	
 
 			$dtr = $this->database->db_fetch_hash("data_template_rrd", {
 				data_template_id		=> $dt->{id},
@@ -401,7 +398,7 @@ sub update_rrd {
 			if ( defined($dl) ) {
 				my $template_id = $dtr->{id};
 				# -- on recupère l'instance existante, 0 sinon
-				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): instancie data_template_rrd for [$$ds{ds_name}] on [$$this{hostname}]", "LOG_DEBUG") if $this->{debug};
+				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): instancie data_template_rrd for [$$ds{ds_name}] on [$$this{hostname}]", "LOG_DEBUG");
 
 				if ( $this->database->item_exist( "data_template_rrd", { local_data_template_rrd_id => $template_id, local_data_id => $dl->{id}, data_template_id => $dt->{id} } ) == 1 ) {
 					$dtr->{id} = $this->database->get_id("data_template_rrd", {
@@ -425,39 +422,39 @@ sub update_rrd {
 				$dtr->{id}				= $this->table_save("data_template_rrd", $dtr);
 			}
 
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): commit", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): commit", "LOG_DEBUG");
 			$this->database->commit();
 		};
 
 		$this->database->rollback() if $@;
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): end of creating de [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): end of creating de [$$ds{ds_name}]", "LOG_DEBUG");
 	}
 
 	# -- delete older data_source
-	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): delete older data_source", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): delete older data_source", "LOG_DEBUG");
 	while( my ($key, $value)=each(%$state)){
 		if($value eq "del"){
 			my $command = "SELECT id FROM data_template_rrd WHERE data_template_id ='$$dt{id}' AND data_source_name='$key' AND local_data_id='0'";
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG");
 
 			my $dtrid = $this->database->db_fetch_cell($command);
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): suppression du ds_name : $key", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): suppression du ds_name : $key", "LOG_DEBUG");
 
 			$command = "DELETE FROM graph_template_input_defs WHERE graph_template_item_id IN (SELECT id FROM graph_templates_item where task_item_id='$dtrid');";
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG");
 			$this->database->execute($command);
 
 			$command = "DELETE FROM graph_templates_item where task_item_id='$dtrid';";
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG");
 			$this->database->execute($command);
 
 			$command = "DELETE FROM data_template_rrd WHERE data_template_id ='".$$dt{id}."' AND data_source_name='$key';";
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG");
 			$this->database->execute($command);
 		}
 	}
 
-	Main::log_msg("<-- N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG");
 }
 
 # -- defini des array dont les données sont fiees dans le code source de cacti : /var/www/cacti/include/config_arrays.php

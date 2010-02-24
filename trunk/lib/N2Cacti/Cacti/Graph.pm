@@ -54,11 +54,10 @@ sub new {
 		graph_item_type		=> $param{graph_item_type} || "AREA",
 		rrd			=> $param{rrd}, # rrd provide template, datasource and path_rrd now!
 		source			=> $param{source} || "Nagios",
-		graph_item_colors	=> $param{graph_item_colors} || "",
-		debug			=> $param{debug}
+		graph_item_colors	=> $param{graph_item_colors} || ""
 	};
 
-	Main::log_msg("--> N2Cacti::Cacti::Graph::new()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Graph::new()", "LOG_DEBUG");
 
 	$this->{template} = $this->{rrd}->getTemplate();
 	$this->{service_name} = $this->{rrd}->getServiceName();
@@ -83,7 +82,7 @@ sub new {
         
 	bless ($this, $class);
 
-	Main::log_msg("<-- N2Cacti::Cacti::Graph::new()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Graph::new()", "LOG_DEBUG");
 	return $this;
 }
 
@@ -118,7 +117,7 @@ sub create_individual_instance {
 	my $this = shift;
 	my $main_rrd = $this->{rrd}->getPathRRD();
 
-	Main::log_msg("--> N2Cacti::Cacti::Graph::create_individual_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Graph::create_individual_instance()", "LOG_DEBUG");
 	# need to find the data_template_rrd...		
 	my $data_template_name		= $this->{data_template_name};
 	my $data_template_data_name	= $this->{data_template_data_name};
@@ -147,7 +146,7 @@ sub create_individual_instance {
 	$this->{graph_template_name}            = $graph_template_name;
 	$this->{graph_template_graph_title}    	= $graph_template_graph_name;
 
-	Main::log_msg("<-- N2Cacti::Cacti::Graph::create_individual_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Graph::create_individual_instance()", "LOG_DEBUG");
 }
 
 
@@ -155,10 +154,10 @@ sub create_individual_instance {
 # -------------------------------------------------------------
 sub create_instance {
 	my $this        = shift;
-	my $debug       = shift ||0;
+
 	my ($hostid, $gl, $gt, $gtg,$gtg_instance);
 
-	Main::log_msg("--> N2Cacti::Cacti::Graph::create_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Cacti::Graph::create_instance()", "LOG_DEBUG");
 	
 	# -- recuperation des templates (doivent exister)
 	$hostid  = $this->database->get_id("host", { description => $$this{hostname}} );
@@ -178,7 +177,7 @@ sub create_instance {
 	eval{
 		#-- graph_local creating
 		if(! $this->database->db_fetch_hash("graph_local", { host_id => $hostid, graph_template_id => $gt->{id}})){
-			Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): graph_local creating...", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): graph_local creating...", "LOG_DEBUG");
 			$gl = $this->database->new_hash("graph_local");
 			$gl->{id} = "0";
 			$gl->{graph_template_id} = $gt->{id};
@@ -189,7 +188,7 @@ sub create_instance {
 		}
 
 		if(! $this->database->item_exist("graph_templates_graph", { graph_template_id => $gt->{id}, local_graph_id => $gl->{id}}) ){
-			Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): creation du graph_template_graph", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): creation du graph_template_graph", "LOG_DEBUG");
 			$gtg->{local_graph_template_graph_id} = $gtg->{id};
 			$gtg->{local_graph_id} = $gl->{id};
 			$gtg->{title_cache} = $gtg->{title};
@@ -199,14 +198,14 @@ sub create_instance {
 		}
 
 		# if this is reached, queries succeeded; commit them
-		Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): commit", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): commit", "LOG_DEBUG");
 		$this->database->commit();
 	};
 
 	$this->database->rollback() if $@;
-	Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): $@", "LOG_DEBUG") if $@;
+	Main::log_msg("N2Cacti::Cacti::Graph::create_instance(): $@", "LOG_ERR") if $@;
 
-	Main::log_msg( "<-- N2Cacti::Cacti::Graph::create_instance()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg( "<-- N2Cacti::Cacti::Graph::create_instance()", "LOG_DEBUG");
 	# -- copie du graph_templates_graph (instanciation)
 	# -- pour chaque datasource : (4 itemps par datasource : libelle, current, average, maximum)
 	# -- get sequence (on recupere l'instance du template)
@@ -220,7 +219,7 @@ sub create_template {
 	my $gt = {};
 	my $i=0;
 
-	Main::log_msg ("--> N2Cacti::Cacti::Graph::create_temlate()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg ("--> N2Cacti::Cacti::Graph::create_temlate()", "LOG_DEBUG");
 
 	$this->database->begin();
 
@@ -228,7 +227,7 @@ sub create_template {
 		#-- graph_templates creating
 		if (!$this->database->item_exist("graph_templates",{ hash => generate_hash("graph_templates : " . $this->{graph_template_name})} )) {
 			
-			Main::log_msg ("N2Cacti::Cacti::Graph::create_template(): creation of graph_templates", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg ("N2Cacti::Cacti::Graph::create_template(): creation of graph_templates", "LOG_DEBUG");
 			$gt		= $this->database->new_hash("graph_templates");
 			$gt->{id}	= "0";
 			$gt->{hash}	= generate_hash("graph_templates : $$this{graph_template_name}");
@@ -241,7 +240,7 @@ sub create_template {
 		#--  graph_templates_graph creating
 		if ( ! $this->database->item_exist("graph_templates_graph", { graph_template_id => $gt->{id}, local_graph_template_graph_id =>0, local_graph_id=>0}) ) {
 			
-			Main::log_msg("N2Cacti::Cacti::Graph::create_template(): creation graph_templates_graph", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::create_template(): creation graph_templates_graph", "LOG_DEBUG");
 
 			my $gtg									= $this->database->new_hash("graph_templates_graph");
 			$gtg->{id}				= "0"; # we want create a new template no one exist
@@ -289,12 +288,12 @@ sub create_template {
 		# soit il y avait un template et dans ce cas, on a pas grand chose a mettre à jour manuellement donc pour le moment on ignore la mise a jour en série	
 	
 		# if this is reached, queries succeeded; commit them
-		Main::log_msg("N2Cacti::Cacti::Graph::create_template(): commit", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Graph::create_template(): commit", "LOG_DEBUG");
 		$this->database->commit();
 	};
 	$this->database->rollback() if $@;
 	Main::log_msg("N2Cacti::Cacti::Graph::create_template(): $@", "LOG_ERR") if $@;
-	Main::log_msg("<-- N2Cacti::Cacti::Graph::create_template()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Graph::create_template()", "LOG_DEBUG");
 
 }
 
@@ -331,7 +330,7 @@ sub update_input {
 	my $this = shift;
 	my $state = {};
 
-	Main::log_msg( "--> N2Cacti::Cacti::Graph::update_input()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg( "--> N2Cacti::Cacti::Graph::update_input()", "LOG_DEBUG");
 
 	my $datasource  = $this->{rrd}->getDataSource();
 	my ($hostid, $gl, $gt, $gtg, $gt_input);
@@ -340,7 +339,7 @@ sub update_input {
 	$hostid = $this->database->get_id("host",{description => $$this{hostname}} );
 
 	if ( not scalar $hostid ) {
-		Main::log_msg( "N2Cacti::Cacti::Graph::update_input(): host template not found - check you have put api_cacti script", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg( "N2Cacti::Cacti::Graph::update_input(): host template not found - check you have put api_cacti script", "LOG_DEBUG");
 	}
     
 	$gt = $this->database->db_fetch_hash("graph_templates", { hash => generate_hash("graph_templates : $$this{graph_template_name}") });
@@ -352,18 +351,18 @@ sub update_input {
 
 	$this->database->begin();
 	eval{
-		Main::log_msg("N2Cacti::Cacti::Graph::update_input(): add, update for each datasource", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Cacti::Graph::update_input(): add, update for each datasource", "LOG_DEBUG");
 		my $init_colors = 0;
 		# -- add / update des datasource
 		while (my ($ds_name,$ds) = each (%$datasource)){
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): ds.rrd_file=$$ds{rrd_file}", "LOG_DEBUG") if $this->{debug};
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): this.rrd.rrd_file=".$this->{rrd}->{rrd_file}, "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): ds.rrd_file=$$ds{rrd_file}", "LOG_DEBUG");
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): this.rrd.rrd_file=".$this->{rrd}->{rrd_file}, "LOG_DEBUG");
 			next if ($ds->{rrd_file} ne $this->{rrd}->{rrd_file});
 
 			my $sequence = $this->database->db_fetch_cell("select max(sequence)+1 as seq from graph_templates_item where graph_template_id=$$gt{id} and local_graph_id=0");
 			$sequence = 1 if !defined($sequence);
 
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): sequence=$sequence", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): sequence=$sequence", "LOG_DEBUG");
 
 			my $dtr	= $this->database->db_fetch_hash("data_template_rrd", {hash =>generate_hash($ds->{ds_name}.generate_hash($this->{data_template_name})) });
 			my $gti = $this->database->db_fetch_hash("graph_templates_item", {hash =>generate_hash("graph_template_id $$ds{ds_name} sequence $sequence")});
@@ -371,11 +370,11 @@ sub update_input {
 
 			if($this->database->item_exist("graph_template_input", {hash =>$gt_input_hash})){ 
 				# items has been define, we dont custom, go to cacti interface
-				Main::log_msg("N2Cacti::Graph::update_input(): items has been defined, we dont overridding the parameter", "LOG_DEBUG") if $this->{debug};
+				Main::log_msg("N2Cacti::Graph::update_input(): items has been defined, we dont overridding the parameter", "LOG_DEBUG");
 				next;
 			}
 
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): create input for the ds_name [$$ds{ds_name}]", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): create input for the ds_name [$$ds{ds_name}]", "LOG_DEBUG");
 			$gt_input = $this->database->new_hash("graph_template_input");
 			delete($gt_input->{id});
 			$gt_input->{hash} = $gt_input_hash;
@@ -385,7 +384,7 @@ sub update_input {
 			$gt_input->{id}	= $this->table_save("graph_template_input", $gt_input);
 
 			# --- ITEM 1 : AVERAGE :
-			Main::log_msg("N2Cacti::graph::update_input(): creating ITEM 1", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::graph::update_input(): creating ITEM 1", "LOG_DEBUG");
 			$gti 					= $this->database->new_hash("graph_templates_item");
 			$gti->{id}				= "0";
 			$gti->{hash}				= generate_hash("graph_template_id $$ds{ds_name} sequence $sequence");
@@ -411,7 +410,7 @@ sub update_input {
 			$this->table_save("graph_template_input_defs", $gti_defs);
 
 			# --- ITEM 2 : Current : 
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): creating ITEM 2 - Current", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): creating ITEM 2 - Current", "LOG_DEBUG");
 			#$gti 					= $this->database->new_hash("graph_templates_item");
 			$gti->{id}				= "0";
 			$gti->{hash}				= generate_hash("graph_template_id $$ds{ds_name} sequence $sequence");
@@ -429,7 +428,7 @@ sub update_input {
 			$this->table_save("graph_template_input_defs", $gti_defs);
 
 			# --- ITEM 3 : Average :
-			Main::log_msg( "N2Cacti::graph::update_input(): creating ITEM 3 - Average", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg( "N2Cacti::graph::update_input(): creating ITEM 3 - Average", "LOG_DEBUG");
 		
 			#		$gti	                            = $this->database->new_hash("graph_templates_item");
 			$gti->{id}				= "0";
@@ -446,7 +445,7 @@ sub update_input {
 
 			# --- ITEM 4 :
 
-			Main::log_msg( "N2Cacti::graph::update_input(): creating ITEM 4 - Maximum", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg( "N2Cacti::graph::update_input(): creating ITEM 4 - Maximum", "LOG_DEBUG");
 			#$gti					= $this->database->new_hash("graph_templates_item");
 			$gti->{id}				= "0";
 			$gti->{hash}				= generate_hash("graph_template_id $$ds{ds_name} sequence $sequence");
@@ -461,7 +460,7 @@ sub update_input {
 			$gti_defs->{graph_template_item_id}	= $gti->{id};
 			$this->table_save("graph_template_input_defs", $gti_defs);
 
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): commit", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): commit", "LOG_DEBUG");
 			# if this is reached, queries succeeded; commit them
 			$this->database->commit();
 			$this->database->begin();
@@ -487,7 +486,7 @@ sub update_input {
             
 		# -- creation des instances
 		if ( $this->database->item_exist( "graph_local", { host_id => $hostid, graph_template_id=>$gt->{id}} ) ) {
-			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): instances' creation", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::Cacti::Graph::update_input(): instances' creation", "LOG_DEBUG");
 			$gl = $this->database->db_fetch_hash("graph_local", { host_id => $hostid, graph_template_id=>$gt->{id}});
 
 			my $task_item_id = 0;
@@ -498,10 +497,10 @@ sub update_input {
 				if($task_item_id != $gti->{task_item_id}){
 					# we get the instance of data_template_rrd (datasource) for the task_item_id
 					$dtr_instance = $this->database->db_fetch_hash("data_template_rrd", { hash => "", local_data_template_rrd_id => $gti->{task_item_id}, local_data_id => $dl->{id}, data_template_id => $dt->{id} });
-					Main::log_msg("N2Cacti::Cacti::Graph::update_input(): $$gti{task_item_id}:$$dl{id}:$$dt{id}", "LOG_DEBUG") if $this->{debug};
+					Main::log_msg("N2Cacti::Cacti::Graph::update_input(): $$gti{task_item_id}:$$dl{id}:$$dt{id}", "LOG_DEBUG");
 					$task_item_id = $gti->{task_item_id};
 				}
-				Main::log_msg("N2Cacti::Cacti::Graph::update_input(): getting instance", "LOG_DEBUG") if $this->{debug};
+				Main::log_msg("N2Cacti::Cacti::Graph::update_input(): getting instance", "LOG_DEBUG");
 
 				if (!$this->database->item_exist("graph_templates_item",{ local_graph_template_item_id => $gti->{id}, local_graph_id => $gl->{id}, task_item_id => $dtr_instance->{id} || "0", sequence => $gti->{sequence}})){
 					$gti->{local_graph_template_item_id}	= $gti->{id};
@@ -514,13 +513,13 @@ sub update_input {
 			}
 		}	
 
-		Main::log_msg( "N2Cacti::Cacti::Graph::update_input(): commit", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg( "N2Cacti::Cacti::Graph::update_input(): commit", "LOG_DEBUG");
 		# if this is reached, queries succeeded; commit them
 		$this->database->commit();
 	};
 
 	$this->database->rollback() if $@;
-	Main::log_msg("<-- N2Cacti::Cacti::Graph::update_input()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Cacti::Graph::update_input()", "LOG_DEBUG");
 }
 
 1;
