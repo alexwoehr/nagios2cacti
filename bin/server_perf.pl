@@ -27,6 +27,7 @@ package Main;
 #use lib qw(.);
 use Cwd;
 use Cwd 'abs_path';
+use lib '/HOME/uxwadm/scripts/n2cacti/lib';
 require Sys::Syslog;
 
 my $chdir=abs_path($0);
@@ -86,7 +87,6 @@ $| = 1;
 # -- initiatilisation
 my $opt = {};
 my $rrderror = "";
-my $debug = 0;
 my $base_rrd = {};
 my ($io,$line);
 
@@ -100,7 +100,6 @@ if ( $config == undef ) {
 
 set_process_name($0);
 
-$debug = 1 if (defined($opt->{v}));
 
 ################################################################################
 # Fonctions
@@ -146,7 +145,7 @@ sub log_msg {
 # @return	: undef
 #
 sub clean_exit {
-	log_msg("--> clean_exit()", "LOG_DEBUG") if $debug;
+	log_msg("--> clean_exit()", "LOG_DEBUG");
 
 	if ( -p $$config{SERVICE_PERFDATA_PIPE} ) {
 		log_msg("clean_exit(): removing pipe", "LOG_INFO");
@@ -158,7 +157,11 @@ sub clean_exit {
 		close $io;
 	}
 
-	log_msg("<-- clean_exit()", "LOG_DEBUG") if $debug;
+	
+	log_msg("clean_exit(): removing lock file", "LOG_INFO");
+	unlink $$config{PID_FILE};
+
+	log_msg("<-- clean_exit()", "LOG_DEBUG");
 	exit 0;
 }
 
@@ -201,8 +204,7 @@ daemonize('cacti', 'cacti', "$$config{PID_FILE}") if (defined($opt->{d}));
 my $archive = new N2Cacti::Archive({
 	archive_dir	=> $$config{ARCHIVE_DIR},
 	rotation	=> $$config{ROTATION},
-	basename	=> "perfdata.db",
-	debug		=> $debug
+	basename	=> "perfdata.db"
 });
 
 unless (-p $$config{SERVICE_PERFDATA_PIPE}){
@@ -224,29 +226,29 @@ while (1) {
 		$io = new IO::File ($$opt{f}, "r");
 	} elsif( defined($$opt{s}) ) {
 		unlink($$opt{s});
-		log_msg("creating socket file : $$opt{s}", "LOG_DEBUG") if $debug;
+		log_msg("creating socket file : $$opt{s}", "LOG_DEBUG");
 		$io = IO::Socket::UNIX->new(HostPath => $$opt{s}, Type => SOCK_DGRAM, Listen => 5) or die( "socket: $@");
 		select(undef,undef,undef,5);
-		log_msg("socket created", "LOG_DEBUG") if $debug;
+		log_msg("socket created", "LOG_DEBUG");
 	} elsif(defined($$opt{p})){
-		log_msg( "create socket udp $$opt{p}", "LOG_DEBUG") if $debug;
+		log_msg( "create socket udp $$opt{p}", "LOG_DEBUG");
 		$io = IO::Socket::INET->new(LocalPort => $$opt{p}, Proto => 'udp') or die( "socket: $@");
-		log_msg("socket created", "LOG_DEBUG") if $debug;
+		log_msg("socket created", "LOG_DEBUG");
 	}
 
 	while ($io->recv($line,16384)){
-		my $hash=md5_hex($line);
+		my $hash = md5_hex($line);
 
 		#-- return the md5 line
 		if( defined($$opt{s}) || defined($$opt{p}) ) {
 			my($port, $ipaddr) = sockaddr_in($io->peername);
 			my $hishost = gethostbyaddr($ipaddr, AF_INET);
-			log_msg("$hishost: $hash", "LOG_DEBUG") if $debug;
+			log_msg("$hishost: $hash", "LOG_DEBUG");
 			$io->send("$hash");
 		}
 
 		chomp $line;
-		log_msg("reception: $line", "LOG_DEBUG") if $debug;
+		log_msg("reception: $line", "LOG_DEBUG");
 		$archive->put("$line");
 		my @fields = split(/\|/, $line);
 		my (	$servicedesc, 
@@ -270,17 +272,15 @@ while (1) {
 			$fields[SVC_SERVICEPERFDATA]
 		);
 
-		if ( $debug ) {
-			log_msg("service desc : ". $fields[SVC_SERVICEDESC], "LOG_DEBUG");
-			log_msg("hostname : ". $fields[SVC_HOSTNAME], "LOG_DEBUG");
-			log_msg("host address : ". $fields[SVC_HOSTADDRESS], "LOG_DEBUG");
-			log_msg("timet : ".$fields[SVC_TIMET], "LOG_DEBUG");
-			log_msg("service execution time : ".$fields[SVC_SERVICEEXECUTIONTIME], "LOG_DEBUG");
-			log_msg("service latency : ".$fields[SVC_SERVICELATENCY], "LOG_DEBUG");
-			log_msg("service state : ".$fields[SVC_SERVICESTATE], "LOG_DEBUG");
-			log_msg("service output : ".$fields[SVC_SERVICEOUTPUT], "LOG_DEBUG");
-			log_msg("service perfdata : ".$fields[SVC_SERVICEPERFDATA], "LOG_DEBUG");
-		}
+		log_msg("service desc : ". $fields[SVC_SERVICEDESC], "LOG_DEBUG");
+		log_msg("hostname : ". $fields[SVC_HOSTNAME], "LOG_DEBUG");
+		log_msg("host address : ". $fields[SVC_HOSTADDRESS], "LOG_DEBUG");
+		log_msg("timet : ".$fields[SVC_TIMET], "LOG_DEBUG");
+		log_msg("service execution time : ".$fields[SVC_SERVICEEXECUTIONTIME], "LOG_DEBUG");
+		log_msg("service latency : ".$fields[SVC_SERVICELATENCY], "LOG_DEBUG");
+		log_msg("service state : ".$fields[SVC_SERVICESTATE], "LOG_DEBUG");
+		log_msg("service output : ".$fields[SVC_SERVICEOUTPUT], "LOG_DEBUG");
+		log_msg("service perfdata : ".$fields[SVC_SERVICEPERFDATA], "LOG_DEBUG");
 
 		# Host perfdata process
 		if ( $fields[0]=~ m/HOSTPERFDATA/i ) {
@@ -294,20 +294,18 @@ while (1) {
 		# Service perfdata process
 		if ( $fields[0]=~ m/SERVICEPERFDATA/i || $fields[0] =~ m/SERVICEARCHIVEPERFDATA/i ) {
 			if ( ! defined ($$base_rrd{$hostname}{$servicedesc} ) ) {
-				log_msg("new N2Cacti::RRD ($hostname,$servicedesc, $timet)", "LOG_DEBUG") if $debug;
+				log_msg("new N2Cacti::RRD ($hostname,$servicedesc, $timet)", "LOG_DEBUG");
 				$$base_rrd{$hostname}{$servicedesc} = new N2Cacti::RRD({
 					service_description => "$servicedesc", 
 					hostname	=> "$hostname",
 					start_time	=> $timet,
-					debug		=> $debug,
 					with_mysql	=> defined($opt->{m})
 				});
 
 				if ( defined($opt->{u}) && $$base_rrd{$hostname}{$servicedesc}->validate() ) {
 					my $host = new N2Cacti::Cacti::Host({
 						hostname	=> $hostname,
-						hostaddress	=> $hostaddress,
-						debug		=> $debug
+						hostaddress	=> $hostaddress
 					});
 					$host->create_host();
 			
@@ -316,8 +314,7 @@ while (1) {
 						hostname		=> $hostname,
 						hostaddress		=> $hostaddress,
 						service_description	=> $servicedesc,
-						rrd			=> $$base_rrd{$hostname}{$servicedesc},
-						debug			=> $debug
+						rrd			=> $$base_rrd{$hostname}{$servicedesc}
 					});
 
 					$data_template->create_instance();
@@ -331,8 +328,7 @@ while (1) {
 						service_description	=> $servicedesc,
 						graph_item_type		=> $config->{GRAPH_ITEM_TYPE},
 						graph_item_colors	=> $config->{GRAPH_ITEM_COLORS},
-						rrd			=> $$base_rrd{$hostname}{$servicedesc},
-						debug			=> $debug
+						rrd			=> $$base_rrd{$hostname}{$servicedesc}
 					});
 
 					$graph_template->create_template();

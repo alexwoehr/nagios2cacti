@@ -161,9 +161,9 @@ sub execute_with_param {
 	my $param   = shift;
 	my $i       = 1;
 
-        Main::log_msg("--> N2Cacti::database:execute_with_param()", "LOG_DEBUG") if $this->{debug};
+        Main::log_msg("--> N2Cacti::database:execute_with_param()", "LOG_DEBUG");
 
-        Main::log_msg("N2Cacti::database:execute_with_param(): prepare : $query", "LOG_DEBUG") if $this->{debug};
+        Main::log_msg("N2Cacti::database:execute_with_param(): prepare : $query", "LOG_DEBUG");
 	my $sth = $this->{dbh}->prepare($query);
 
 	if ( ! $sth && $this->{dbh}->{AutoCommit} == 1 ) {
@@ -181,7 +181,7 @@ sub execute_with_param {
 		Main::log_msg("N2Cacti::database:execute_with_param(): $query failed", "LOG_ERR") if $@;
 	}
 
-        Main::log_msg("<-- N2Cacti::database:execute_with_param()", "LOG_DEBUG") if $this->{debug};
+        Main::log_msg("<-- N2Cacti::database:execute_with_param()", "LOG_DEBUG");
 	return $sth;
 }
 
@@ -190,8 +190,8 @@ sub execute_with_param {
 sub execute {
 	my ($this, $query) = (shift, shift);
 
-	Main::log_msg("--> N2Cacti::database::execute()", "LOG_DEBUG") if $this->{debug};
-	Main::log_msg("N2Cacti::database::execute(): query : $query", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::database::execute()", "LOG_DEBUG");
+	Main::log_msg("N2Cacti::database::execute(): query : $query", "LOG_DEBUG");
 	my $sth = $this->{dbh}->prepare($query);
 
 	Main::log_msg("N2Cacti::database::execute(): cannot prepare $query : $@", "LOG_ERR") if $@;
@@ -203,7 +203,7 @@ sub execute {
 		Main::log_msg("N2Cacti::database::execute(): cannot execute $query : $@", "LOG_ERR") if $@;
 	}
 
-	Main::log_msg("<-- N2Cacti::database::execute()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::database::execute()", "LOG_DEBUG");
 	return $sth;
 }
 
@@ -232,7 +232,7 @@ sub DESTROY {
 sub insert_id {
 	my $this=shift;
 
-	Main::log_msg("N2Cacti::Cacti::Database::insert_id() is deprecated", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Cacti::Database::insert_id() is deprecated", "LOG_DEBUG");
 
 	return $this->last_insert_id();
 }
@@ -285,7 +285,7 @@ sub item_exist {
 	my $fields = shift; # { nomduchamps => valeur}
 	my $sql = "SELECT count(*) FROM $table WHERE";
 
-	Main::log_msg("--> N2Cacti::Data::item_exist()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Data::item_exist()", "LOG_DEBUG");
 
 	while (my ($field, $value) = each (%$fields) ) {
 		$sql.=" $field = '$value' AND";
@@ -294,18 +294,18 @@ sub item_exist {
 	$sql =~ s/WHERE$//g;
 	$sql =~ s/AND$//g;
 	
-	Main::log_msg("N2Cacti::Data::item_exist(): $sql", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Data::item_exist(): $sql", "LOG_DEBUG");
 
 	my $value = $this->db_fetch_cell($sql);
 
 	if ( $value !~ /\d+/ ) { 
-		Main::log_msg("N2Cacti::Data::item_exist(): the query did not return a scalar", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Data::item_exist(): the query did not return a scalar", "LOG_DEBUG");
 		return undef;
 	} else {
-		Main::log_msg("N2Cacti::Data::item_exist(): value = $value", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Data::item_exist(): value = $value", "LOG_DEBUG");
 	}
 
-	Main::log_msg("<-- N2Cacti::Data::item_exist()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Data::item_exist()", "LOG_DEBUG");
 
 	if ( $value == 0 ) {
 		return 0;
@@ -321,7 +321,7 @@ sub db_fetch_hash {
 	my $fields = shift; # { nomduchamps => valeur}
 	my $sql = "SELECT * FROM $table WHERE";
 
-	Main::log_msg("--> N2Cacti::database::db_fetch_hash()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::database::db_fetch_hash()", "LOG_DEBUG");
 
 	while (my ($field, $value) = each (%$fields) ) {
 		$sql.=" $field = '$value' AND";
@@ -330,13 +330,13 @@ sub db_fetch_hash {
 	$sql =~ s/WHERE$//g;
 	$sql =~ s/AND$//g;
 
-	Main::log_msg("N2Cacti::database::db_fetch_hash(): query: $sql", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::database::db_fetch_hash(): query: $sql", "LOG_DEBUG");
 
 	my $sth = $this->execute($sql);
 
 	while(my $row = $sth->fetchrow_hashref()){
 		$sth->finish();
-		Main::log_msg("<-- N2Cacti::database::db_fetch_hash()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("<-- N2Cacti::database::db_fetch_hash()", "LOG_DEBUG");
 		return $row;
 	}
 
@@ -354,7 +354,7 @@ sub get_id {
 	my $id = shift||"id"; # champs a retourner
 	my $sql = "SELECT $id FROM $table WHERE";
 
-	Main::log_msg("--> N2Cacti::Data::get_id()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Data::get_id()", "LOG_DEBUG");
 
 	while (my ($field, $value) = each (%$fields) ) {
 		$sql.=" $field = '$value' AND";
@@ -363,16 +363,16 @@ sub get_id {
 	$sql =~ s/WHERE$//g;
 	$sql =~ s/AND$//g;
 
-	Main::log_msg("N2Cacti::Data::get_id - $sql", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Data::get_id - $sql", "LOG_DEBUG");
 	my $result;
 	$result = $this->db_fetch_cell( $sql);
 
 	if ( not scalar $result ) {
-		Main::log_msg("N2Cacti::Data::get_id(): $sql returned no result", "LOG_DEBUG") if $this->{debug};
-		Main::log_msg("<-- N2Cacti::Data::get_id()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("N2Cacti::Data::get_id(): $sql returned no result", "LOG_DEBUG");
+		Main::log_msg("<-- N2Cacti::Data::get_id()", "LOG_DEBUG");
 		return undef;
 	} else {
-		Main::log_msg("<-- N2Cacti::Data::get_id()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("<-- N2Cacti::Data::get_id()", "LOG_DEBUG");
 		return $result;
 	}
 }
@@ -386,8 +386,8 @@ sub new_hash {
 	my $sql = "SELECT * FROM $table LIMIT 0";
 	my $sth = $this->execute($sql);
 
-	Main::log_msg("--> N2Cacti::Data::new_hash()", "LOG_DEBUG") if $this->{debug};
-	Main::log_msg("N2Cacti::Data::new_hash(): $sql", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Data::new_hash()", "LOG_DEBUG");
+	Main::log_msg("N2Cacti::Data::new_hash(): $sql", "LOG_DEBUG");
 
 	foreach (@{$sth->{NAME}}){
 		$result->{$_}="";
@@ -395,7 +395,7 @@ sub new_hash {
 
 	$sth->finish();
 
-	Main::log_msg("<-- N2Cacti::Data::new_hash()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Data::new_hash()", "LOG_DEBUG");
 	return $result;
 }
 
@@ -414,7 +414,7 @@ sub sql_save {
 	my $data = "";
 	my $i=0;
 
-	Main::log_msg("--> N2Cacti::Data::sql_save()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::Data::sql_save()", "LOG_DEBUG");
 
 	while (my ($key, $value) = each (%$array_items)) {
 		$value =~ s/;//g;
@@ -426,11 +426,11 @@ sub sql_save {
 	$data   =~  s/.$//g;
 	$sql.=") VALUES ($data)";
 
-	Main::log_msg("N2Cacti::Data::sql_save(): query:  $sql", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::Data::sql_save(): query:  $sql", "LOG_DEBUG");
 
 	$this->execute($sql);
 
-	Main::log_msg("<-- N2Cacti::Data::sql_save()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::Data::sql_save()", "LOG_DEBUG");
 	return $this->last_insert_id($table_name);
 }
 
@@ -446,16 +446,16 @@ sub table_create {
 
 	my $query = "CREATE TABLE IF NOT EXISTS $table (";
 
-	Main::log_msg("--> N2Cacti::database::table_create()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("--> N2Cacti::database::table_create()", "LOG_DEBUG");
 
 	while (my ($key, $value) = each (%$fields)){
 		$query .= "$key $value,";
 	}
 	$query =~ s/,$/)/g;
 	$query .= " ENGINE=MYISAM DEFAULT CHARSET=latin1;";
-	Main::log_msg("N2Cacti::database(): $query", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("N2Cacti::database(): $query", "LOG_DEBUG");
 	$this->execute($query);	
-	Main::log_msg("<-- N2Cacti::database::table_create()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::database::table_create()", "LOG_DEBUG");
 }
 
 1;

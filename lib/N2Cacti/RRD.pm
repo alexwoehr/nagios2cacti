@@ -45,7 +45,6 @@ sub new {
 		service_description => $param{service_description},
 		hostname	=> $param{hostname} || undef,
 		config 		=> get_config(),
-		debug 		=> $param{debug} || 0,
 		start_time	=> $param{start_time} || time,
 		template	=> "", 	# template name
 		service_name	=> "",	# service name (without @template_name else service_description in maps case)
@@ -74,7 +73,7 @@ sub new {
 
 sub validate{
 	my $this = shift;
-	Main::log_msg("N2Cacti::RRD::item valid : $$this{valid}", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("N2Cacti::RRD::item valid : $$this{valid}", "LOG_DEBUG");
 	return $$this{valid};
 }
 
@@ -142,21 +141,21 @@ sub update_rrd_el {
 
 	return undef if (!$this->validate());
 
-	Main::log_msg("--> N2Cacti::RRD::update_rrd_el()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("--> N2Cacti::RRD::update_rrd_el()", "LOG_DEBUG") ;
 	if ( -f $$this{perf_rrd_file} ){
 		my $ds_value = "$execution:$latency";
 		my $rrderror = RRDs::error;
 
 		RRDs::update( "$$this{perf_rrd_file}", "--template", "$$this{ds_name_el}", "$timestamp:$ds_value" );
 
-		Main::log_msg ("N2Cacti::RRD::update_rrd_el(): update $$this{perf_rrd_file} $$this{ds_name_el} with $ds_value", "LOG_DEBUG") if ( $$this{debug} && ! $rrderror);
+		Main::log_msg ("N2Cacti::RRD::update_rrd_el(): update $$this{perf_rrd_file} $$this{ds_name_el} with $ds_value", "LOG_DEBUG");
 		Main::log_msg ("N2Cacti::RRD::update_rrd_el(): update $$this{perf_rrd_file} $$this{ds_name_el} with $ds_value", "LOG_ERR") if $rrderror;
 	}
 
 	#--------------------------------------
 	#-- Support for mysql storage database
 	if ( $this->with_mysql() ) {
-		Main::log_msg ("N2Cacti::RRD::update_rrd_el(): store to mysql ", "LOG_DEBUG") if ($$this{debug});
+		Main::log_msg ("N2Cacti::RRD::update_rrd_el(): store to mysql ", "LOG_DEBUG");
 		my $database = new N2Cacti::database({
 			database_type		=> "mysql",
 			database_schema		=> $$config{PERFDB_NAME},
@@ -164,7 +163,6 @@ sub update_rrd_el {
 			database_username	=> $$config{PERFDB_USER},
 			database_password	=> $$config{PERFDB_PASSWORD},
 			database_port		=> "3306",
-			debug			=> $this->{debug}
 		});
 
 		my $ngs_result={
@@ -195,7 +193,7 @@ sub update_rrd_el {
 		VALUES(FROM_UNIXTIME('$timestamp'),'$$this{host_id}','$$this{service_id}', '$state', '$execution', '$latency');";
 	$database->execute($query);
 	}
-	Main::log_msg("<-- N2Cacti::RRD::update_rrd_el()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("<-- N2Cacti::RRD::update_rrd_el()", "LOG_DEBUG");
 }
 
 #-- parse the perfdata and explode the datasource in datasource_min datasource_max... if available
@@ -237,9 +235,8 @@ sub update_rrd {
 
 	return undef if ( ! $this->validate() );
 
-	Main::log_msg("--> N2Cacti::RRD::update_rrd()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("--> N2Cacti::RRD::update_rrd()", "LOG_DEBUG");
 	if ( ! -f $$this{rrd_file} ) {
-		$$this{debug} = 1;
 		$this->initialize();
 		Main::log_msg("N2Cacti::RRD::update_rrd(): error the base rrd does not exist ! $$this{rrd_file}", "LOG_CRIT") and return undef if ( ! -f $$this{rrd_file} );
 	}
@@ -288,10 +285,10 @@ sub update_rrd {
 			my $ds_name;
 			my ( $key, $val ) = split /=/, $kv;
 
-			Main::log_msg("N2Cacti::RRD::update_rrd(): rewrite = $key : $val : $$ds_rewrite{$key}", "LOG_DEBUG") if $$this{debug};
+			Main::log_msg("N2Cacti::RRD::update_rrd(): rewrite = $key : $val : $$ds_rewrite{$key}", "LOG_DEBUG");
 
 			if ( defined ($$ds_rewrite{$key}) ){
-				Main::log_msg("N2Cacti::RRD::update_rrd(): rewrite $key to $$ds_rewrite{$key}", "LOG_DEBUG") if ($$this{debug});
+				Main::log_msg("N2Cacti::RRD::update_rrd(): rewrite $key to $$ds_rewrite{$key}", "LOG_DEBUG");
 				$ds_name .= "$$ds_rewrite{$key}";
 			} else {
 				$ds_name .= "$key";
@@ -317,7 +314,7 @@ sub update_rrd {
 		RRDs::update( "$$this{rrd_file}", "--template", $ds_names, "$timestamp2:$ds_values" );
 		my $rrderror = RRDs::error;
 
-		Main::log_msg("N2Cacti::RRD::update_rrd(): update $$this{rrd_file} $ds_names with $ds_values at $timestamp2", "LOG_DEBUG") if ($$this{debug} and not $rrderror);
+		Main::log_msg("N2Cacti::RRD::update_rrd(): update $$this{rrd_file} $ds_names with $ds_values at $timestamp2", "LOG_DEBUG");
 		Main::log_msg("N2Cacti::RRD::update_rrd(): update $$this{rrd_file} $ds_names with $ds_values at $timestamp2 : $rrderror", "LOG_ERR") if $rrderror;
 
 		#-- update singles rrd database
@@ -328,7 +325,7 @@ sub update_rrd {
 		#		RRDs::update ( $rrd_file,  "--template", $key, "$timestamp:$value");
 		#		$rrderror = RRDs::error;
 
-		#		Main::log_msg("N2Cacti::RRD::update_rrd(): update $rrd_file : $key with $value at $timestamp", "LOG_DEBUG") if ($$this{debug} || $rrderror);
+		#		Main::log_msg("N2Cacti::RRD::update_rrd(): update $rrd_file : $key with $value at $timestamp", "LOG_DEBUG");
 		#		Main::log_msg("N2Cacti::RRD::update_rrd(): Problem to update $$this{hostname};$$this{service_description};$$this{template} rrd: $rrderror", "LOG_ERR") if $rrderror;
 		#	}
 		#}
@@ -337,7 +334,7 @@ sub update_rrd {
 		#--------------------------------------
 		#-- Support for mysql storage database
 		if ( $this->with_mysql() ) {
-			Main::log_msg ("N2Cacti::RRD::update_rrd(): store to mysql ", "LOG_DEBUG") if $$this{debug};
+			Main::log_msg ("N2Cacti::RRD::update_rrd(): store to mysql ", "LOG_DEBUG");
 			my $database = new N2Cacti::database({
 				database_type       => "mysql",
 				database_schema     => $$config{PERFDB_NAME},
@@ -387,12 +384,12 @@ sub update_rrd {
 				YEAR(FROM_UNIXTIME('$timestamp')),
 				$values)";
 			$database->execute($query);
-			Main::log_msg("N2Cacti::RRD::update_rrd(): store with : $query", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::RRD::update_rrd(): store with : $query", "LOG_DEBUG");
 		}
 		
 	}
 
-	Main::log_msg("<-- N2Cacti::RRD::update_rrd()", "LOG_DEBUG") if $this->{debug};
+	Main::log_msg("<-- N2Cacti::RRD::update_rrd()", "LOG_DEBUG");
 }
 
 sub with_mysql {
@@ -436,18 +433,18 @@ sub initialize {
 	my $rrderror;
 	my $mkdir_error;
 	
-	Main::log_msg("--> N2Cacti::RRD::initialize()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("--> N2Cacti::RRD::initialize()", "LOG_DEBUG");
 
 	# -- Define the template N2RRD for the service
 	my @parse_service_str = split ($config->{TEMPLATE_SEPARATOR_FIELD}, $service);
 	$$this{template} 	= "";
 	if ( $#parse_service_str <= 0 ) {
-		Main::log_msg("N2Cacti::RRD::initialize(): Define the template N2RRD for the service with maps", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Define the template N2RRD for the service with maps", "LOG_DEBUG");
 		open S_MAPS, '<', $config->{CONF_DIR}."/".$config->{SERVICE_NAME_MAPS}
 		or Main::log_msg("N2Cacti::RRD::initialize(): MISSING_FILE: Can't open service maps file \"$$config{CONF_DIR}/$$config{SERVICE_NAME_MAPS}\"\n", "LOG_ERR")
 		and exit 1;
 
-		Main::log_msg("N2Cacti::RRD::initialize(): Searching map in file \"$$config{CONF_DIR}/$$config{SERVICE_NAME_MAPS}\" for service \"$$this{service_description}\" \n", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Searching map in file \"$$config{CONF_DIR}/$$config{SERVICE_NAME_MAPS}\" for service \"$$this{service_description}\" \n", "LOG_DEBUG");
 
 		while (<S_MAPS>) {
 			next if /^#/;    # Skip comments
@@ -457,20 +454,20 @@ sub initialize {
 
 			if ( /$$this{service_description}:\s+(\S+)/i ) {
 				$$this{template} 	= $1 if /$$this{service_description}:\s+(\S+)/i;
-				Main::log_msg("N2Cacti::RRD::initialize(): Mapping service $$this{service_description} -> $$this{template}\n", "LOG_DEBUG") if $$this{debug};
+				Main::log_msg("N2Cacti::RRD::initialize(): Mapping service $$this{service_description} -> $$this{template}\n", "LOG_DEBUG");
 			}
 		}
 		close S_MAPS;
 		$$this{service_name} 	= $$this{service_description};
 	} else {
-		Main::log_msg("N2Cacti::RRD::initialize(): Define the template N2RRD for the service with parse method", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Define the template N2RRD for the service with parse method", "LOG_DEBUG");
 
 		#-- Define template name and service_name
 		$$this{template}	= $parse_service_str[$#parse_service_str];
 		$$this{service_name}	= $parse_service_str[0];
 
-		Main::log_msg("N2Cacti::RRD::initialize(): template=$$this{template}", "LOG_DEBUG") if $$this{debug};
-		Main::log_msg("N2Cacti::RRD::initialize(): service_name=$$this{service_name}", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): template=$$this{template}", "LOG_DEBUG");
+		Main::log_msg("N2Cacti::RRD::initialize(): service_name=$$this{service_name}", "LOG_DEBUG");
 	}
 	
 	if ( $$this{template} eq "" ) {
@@ -480,19 +477,19 @@ sub initialize {
 
 	# -- Define the path to rrd file
 	if (defined ($this->{hostname})){
-		Main::log_msg("N2Cacti::RRD::initialize(): Define the path to rrd file", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Define the path to rrd file", "LOG_DEBUG");
 
 		$$this{rrd_file}	= $config->{RRA_DIR}."/<HOSTNAME>/<HOSTNAME>_<SERVICENAME>.rrd";
 		$$this{perf_rrd_file}	= $config->{RRA_DIR}."/<HOSTNAME>/<HOSTNAME>_<SERVICENAME>_el.rrd";
 
 		# --  Check if a service rewrite rules exist
-		Main::log_msg("N2Cacti::RRD::initialize(): check if a rewrite rules exist", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): check if a rewrite rules exist", "LOG_DEBUG");
 
 	}
 
 
 	# --  Check if a service rewrite rules exist
-	Main::log_msg("N2Cacti::RRD::initialize(): check if a service rewrite rules exists", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("N2Cacti::RRD::initialize(): check if a service rewrite rules exists", "LOG_DEBUG");
 	if ( -f "$$config{CONF_DIR}/$$config{TEMPLATES_DIR}/rewrite/service/$$this{template}_rewrite" ) {
 		open REWRITE, '<', "$$config{CONF_DIR}/$$config{TEMPLATES_DIR}/rewrite/service/$$this{template}_rewrite"
 		or Main::log_msg ("N2Cacti::RRD::initialize(): Can't open rewrite rules file for $$this{hostname}", "LOG_CRIT")
@@ -518,14 +515,14 @@ sub initialize {
 	$$this{ds_rewrite}=$ds_rewrite;
 
 	# -- rewrite filename <HOSTNAME> and <SERVICENAME> 
-	Main::log_msg("N2Cacti::RRD::initialize(): rewrite filename", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("N2Cacti::RRD::initialize(): rewrite filename", "LOG_DEBUG");
 
 	$$this{rrd_file_older}	= $this->rewrite_olderfile("$$this{rrd_file}");
 	$$this{rrd_file}	= $this->rewrite_namefile($$this{rrd_file});
 	$$this{perf_rrd_file}	= $this->rewrite_namefile($$this{perf_rrd_file});
 
-	Main::log_msg("N2Cacti::RRD::initialize(): rrd_file_older : $$this{rrd_file_older}", "LOG_DEBUG") if $$this{debug};
-	Main::log_msg("N2Cacti::RRD::initialize(): rrd_file : $$this{rrd_file}", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("N2Cacti::RRD::initialize(): rrd_file_older : $$this{rrd_file_older}", "LOG_DEBUG");
+	Main::log_msg("N2Cacti::RRD::initialize(): rrd_file : $$this{rrd_file}", "LOG_DEBUG");
 
 	#-- lookup the template file
 	my $rra_path = "$$config{CONF_DIR}/$$config{TEMPLATES_DIR}/rra";
@@ -547,7 +544,7 @@ sub initialize {
  	my $hash = RRDs::info $this->{rrd_file} if ( -f  $this->{rrd_file} );
 
 	if ( -f  $this->{rrd_file} && !RRDs::error ) { # get parameter from rrd file
-		Main::log_msg("N2Cacti::RRD::initialize(): Determine parameter from rrd_file", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Determine parameter from rrd_file", "LOG_DEBUG");
 		my $data = {ds => {}, rra => {}};
 		foreach my $id (keys %$hash){
 			next if ($id !~ m/^DS/i); # we dont use rra parameter only ds
@@ -572,7 +569,7 @@ sub initialize {
 
 		foreach my $ds (keys %$item){
 			my $ds_name = $item->{$ds}->{ds_name};
-			Main::log_msg("N2Cacti::RRD::initialize(): ds_name=$ds_name", "LOG_DEBUG")if $$this{debug};
+			Main::log_msg("N2Cacti::RRD::initialize(): ds_name=$ds_name", "LOG_DEBUG");
 			$this->{datasource}->{$ds_name} = {
 				ds_name		=> $item->{$ds}->{ds_name},
 				ds_type		=> $item->{$ds}->{type},
@@ -584,8 +581,8 @@ sub initialize {
 		}
 		$$this{valid} = 1;
 	} elsif ( -f $this->{rra_file} ) { #get parameter from template
-		Main::log_msg("N2Cacti::RRD::initialize(): Determine parameter from $$this{rra_file}", "LOG_DEBUG") if $$this{debug};
-		Main::log_msg("N2Cacti::RRD::initialize(): open template rra : $$this{rra_file} for service : $$this{service_description}", "LOG_DEBUG") if $$this{debug};
+		Main::log_msg("N2Cacti::RRD::initialize(): Determine parameter from $$this{rra_file}", "LOG_DEBUG");
+		Main::log_msg("N2Cacti::RRD::initialize(): open template rra : $$this{rra_file} for service : $$this{service_description}", "LOG_DEBUG");
 
 		#
 		#   print "Rewrite file detected for: $opt->{H}_${service}\n";
@@ -626,7 +623,7 @@ sub initialize {
 		
 		# -- create rrd database
 		if ( ! -f $$this{rrd_file} ) {
-			Main::log_msg("N2Cacti::RRD::initialize(): creating rrd database $$this{rrd_file}", "LOG_DEBUG") if $$this{debug};
+			Main::log_msg("N2Cacti::RRD::initialize(): creating rrd database $$this{rrd_file}", "LOG_DEBUG");
 
 			`mkdir -p $$config{RRA_DIR}/$$this{hostname}`;
 
@@ -672,7 +669,7 @@ sub initialize {
 		$$this{ds_name_el}=$ds_name_el;
 
 		if (! -f $$this{perf_rrd_file}) {
-			Main::log_msg ("N2Cacti::RRD::initialize(): Creating RRD execution and latency performance file: $$this{perf_rrd_file}", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg ("N2Cacti::RRD::initialize(): Creating RRD execution and latency performance file: $$this{perf_rrd_file}", "LOG_DEBUG");
 			RRDs::create( $$this{perf_rrd_file}, @el_params );
 			$rrderror = RRDs::error;
 			Main::log_msg ("N2Cacti::RRD::initialize(): Problem while creating execution and latency rrd: $rrderror", "LOG_ERR") if ($rrderror);
@@ -681,7 +678,7 @@ sub initialize {
 	
 	#-- Look-up for individual rrd database specific to a host
 	#$this->lookup_individual_rrd();
-	Main::log_msg("<-- N2Cacti::RRD::initialize()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("<-- N2Cacti::RRD::initialize()", "LOG_DEBUG");
 	return 1;
 }
 
@@ -696,7 +693,7 @@ sub create_single_rrd{
 	my $rra_default = "$$config{CONF_DIR}/$$config{TEMPLATES_DIR}/rra/$$config{DEFAULT_RRA}";
 	mkdir "$$config{RRA_DIR}/$$this{hostname}/$$this{hostname}_$$this{service_name}";
 	my $rrd_file = "$$config{RRA_DIR}/$$this{hostname}/$$this{hostname}_$$this{service_name}/$datasource.rrd";
-	Main::log_msg("-->N2Cacti::RRD::create_single_rrd", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("-->N2Cacti::RRD::create_single_rrd", "LOG_DEBUG");
 	if(!-f $rrd_file){
 		if(-f$rra_default){
 			my @t_params = ();
@@ -726,7 +723,7 @@ sub create_single_rrd{
 				@champs=undef;
 			}
 
-			Main::log_msg("N2Cacti::RRD::create_single_rrd(): Creating RRD individual : $rrd_file", "LOG_DEBUG") if $this->{debug};
+			Main::log_msg("N2Cacti::RRD::create_single_rrd(): Creating RRD individual : $rrd_file", "LOG_DEBUG");
 			RRDs::create($rrd_file, @t_params);
 			my $rrderror = RRDs::error;
 			Main::log_msg ("N2Cacti::RRD::create_single_rrd(): Problem while individual rrd: \"$rrd_file\" with error \"$rrderror\"", "LOG_CRIT") if ($rrderror);
@@ -735,7 +732,7 @@ sub create_single_rrd{
 			exit 1;
 		}
 	}
-	Main::log_msg("<-- N2Cacti::RRD::create_single_rrd()", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("<-- N2Cacti::RRD::create_single_rrd()", "LOG_DEBUG");
 }
 
 
@@ -744,7 +741,7 @@ sub create_single_rrd{
 sub lookup_individual_rrd{
 	my $this = shift;
 	my $path = $this->{config}->{RRA_DIR}."/$$this{hostname}/$$this{hostname}_$$this{service_name}";
-	Main::log_msg("--> N2Cacti::RRD::lookup_individual_rrd", "LOG_DEBUG") if $$this{debug};
+	Main::log_msg("--> N2Cacti::RRD::lookup_individual_rrd", "LOG_DEBUG");
 	foreach(getFiles("$path")){
 		my $rrd_file=$_;
 		#-- determine parameter from rrd file
@@ -786,7 +783,7 @@ sub lookup_individual_rrd{
 		}
 	}
 
-	Main::log_msg("<-- N2Cacti::RRD::lookup_individual_rrd") if $$this{debug};
+	Main::log_msg("<-- N2Cacti::RRD::lookup_individual_rrd");
 }
 
 

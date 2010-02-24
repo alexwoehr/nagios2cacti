@@ -31,8 +31,7 @@ sub new {
 		fullpath	=> "",
 		remove_log	=> \&remove,
 		fetch		=> \&fetch,
-		put		=> \&put,
-		debug		=> $param{debug} || 0
+		put		=> \&put
 	};
 	$this->{fullpath}= "$$this{archive_dir}/$$this{basename}";
 	$this->{open}	= \&open_hourly if ($$this{rotation} eq "h");
@@ -75,7 +74,7 @@ sub put {
 	$this->open();
 
 	if ( ! defined $this->{io} ) {
-		Main::log_msg("N2Cacti::Archive::put(): the dbh is not defined, cannot backlog perfdata)", "LOG_ERR");
+		Main::log_msg("N2Cacti::Archive::put(): the dbh is not defined, cannot backlog perfdata", "LOG_ERR");
 		return 1;
 	}
 	chomp $data;
@@ -85,14 +84,16 @@ sub put {
 		return 1;
 	}
 
-	$query = "REPLACE log SET timestamp = '$data_tab[4]', data = '$data', hash='".md5_hex($data)."' WHERE timestamp = '$data_tab[4]';";
+	$query = "REPLACE INTO log ( 'timestamp', 'data', 'hash' ) VALUES ( '$data_tab[4]', '$data', '".md5_hex($data)."' );";
+
+	Main::log_msg("N2Cacti::Archive::put(): query : $query", "LOG_DEBUG");
 
 	if ( $this->{io}->do($query) ) {
-		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG");
 		return 0;
 	} else {
 		Main::log_msg("N2Cacti::Archive::put(): cannot execute : $query : $@", "LOG_CRIT");
-		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG") if $this->{debug};
+		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG");
 		return 1;
 	}
 }
@@ -135,7 +136,7 @@ sub open {
 #
 # Creates a DB file per hour
 #
-sub open_hourly{
+sub open_hourly {
 	my $this        = shift;
 	my $time        = shift;
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($time);
@@ -182,7 +183,6 @@ sub open_daily {
 	}
 }
 
-
 #
 # create the DB's structure
 # use timestamp and md5 of data as key
@@ -190,7 +190,7 @@ sub open_daily {
 sub init {
 	my $this = shift;
 
-	my $query = "CREATE TABLE log ( 'timestamp' INTEGER, 'data' BLOB, 'hash' char(16) CONSTRAINT cle PRIMARY KEY ( 'timestamp','hash') )";
+	my $query = "CREATE TABLE log ( 'timestamp' INTEGER, 'data' BLOB, 'hash' char(16), CONSTRAINT cle PRIMARY KEY ( 'timestamp', 'hash' ) )";
 
 	if ( not defined $this->{io}) {
 		$this->{io}->open();
