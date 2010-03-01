@@ -64,18 +64,19 @@ use Digest::MD5 qw(md5 md5_hex md5_base64);
 $| = 1;
 
 our $opt = {};
-getopts( "H:p:d:s:C:v", $opt );
+getopts( "H:p:d:s:C:vf", $opt );
 
 # Arguments check
 if ( ( ( ! defined($$opt{H}) || ! defined($$opt{p}) ) && ! defined($$opt{s}) ) || ! defined($$opt{d}) ) {
 	print "$0 parameter: 
+-f		: prints log messages to stdout
 -v		: verbose mode
--H <hostname>	:perf2rrd server hostname
--p <port>		: perf2rrd server port
+-H <hostname>	: perf2rrd server hostname
+-p <port>	: perf2rrd server port
 -s <localpath>	: transmission with local AF_UNIX protocol
--C <path> 		: n2rrd configuration file\n";
-	print '-d <perfdata> 	: format [SERVICEPERFDATA]|$SERVICEDESC$|$HOSTNAME$|$HOSTADDRESS$|$TIMET$|$SERVICEEXECUTIONTIME$|$SERVICELATENCY$|$SERVICESTATE$|$SERVICEOUTPUT$|$SERVICEPERFDATA$'."\n";
-	print "\tyou can send data with AF_UNIX and AF_INET\n";	
+-C <path> 	: n2rrd configuration file
+-d <perfdata> 	: format [SERVICEPERFDATA]|\$SERVICEDESC\$|\$HOSTNAME\$|\$HOSTADDRESS\$|\$TIMET\$|\$SERVICEEXECUTIONTIME\$|\$SERVICELATENCY\$|\$SERVICESTATE\$|\$SERVICEOUTPUT\$|\$SERVICEPERFDATA\$'
+you can send data with AF_UNIX and AF_INET\n";
 	exit 1;
 } 
 
@@ -97,6 +98,14 @@ my $archive = new N2Cacti::Archive({
 # Functions
 ##########################################################################
 
+#
+# log_msg
+#
+# log error to stdout or to syslog
+#
+# @args		: message and level
+# @return	: undef
+#
 sub log_msg {
 	my $str = shift;
 	my $level = shift;
@@ -111,18 +120,40 @@ sub log_msg {
 
 	chomp $str;
 
-	print "$level:\t$str\n";
+	if ( not defined($opt->{f}) ) {
+		Sys::Syslog::openlog("n2cacti", "ndelay", "LOG_DAEMON");
+		Sys::Syslog::syslog($level, $str);
+		Sys::Syslog::closelog();
+	} else {
+		print "$level:\t$str\n";
+	}
 }
 
-#-- backup perfdata in backlog before processed
+#
+# backup_perfdata
+#
+# Puts the backlogs into the SQLite file
+#
+# @args		: message et archive object
+# @return	: undef
+#
 sub backup_perfdata {
 	my $message = shift;
 	my $archive = shift;
 
+	Main::log_msg("send_perf.pl:backup_perfdata(): $message", "LOG_INFO");
 	$archive->put($message);
 }
 
-#-- send perfdata and return false if transmission has failed
+#
+# send_perfdata
+#
+# Sends the data though a UDP
+# A timeout is set while sending the data
+#
+# @args		: message, hostname and port number
+# @return	: sucess (0) or failure (1)
+#
 sub send_perfdata {
 	my $message = shift;
 	my $hostname = shift;
@@ -189,7 +220,7 @@ sub send_perfdata {
 		no warnings 'all';
 		local $SIG{ALRM} = sub {
 			Main::log_msg("send_perf.pl::send_perfdata(): timeout ${TIMEOUT}s", "LOG_CRIT");
-			return 1;
+			die "transmit error";
 		};
 	  	alarm $TIMEOUT;
 
@@ -203,9 +234,13 @@ sub send_perfdata {
 			alarm 0;
 			$log_line .= $!;
 			Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
-			return 1;
+			die "transmit error";
 		}
-	} or return 1;
+	};
+
+	if ( $@ =~ m/transmit error/ ) {
+		return 1;
+	}
 
 	$log_line = "Checking : ";
 
@@ -242,25 +277,31 @@ sub process_backlog {
 		$total_number++;
 		my $failed=0;
 		if ( defined($$opt{s}) eq 1 ) {
-			if ( send_perfdata($data->{'data'}, $$opt{s}) == 1 ) {
+			if ( send_perfdata($data->{data}, $$opt{s}) == 1 ) {
 				$failed = 1;
 			}
 		}
 
 		if ( (defined($$opt{H}) and defined($$opt{p})) ) {
-			if ( send_perfdata($backlog->{$timestamp}, $$opt{H}, $$opt{p}) == 1 ) {
+			if ( send_perfdata($data->{data}, $$opt{H}, $$opt{p}) == 1 ) {
 				$failed = 1;
 			}
 		}
 
 		# we purge the backlog only if we dont have any failed
-		$archive->{io}->remove($data->{'timestamp'}, $data->{'hash'})	if $failed==1;
+		if ( $failed == 0 ) {
+			$archive->remove($data->{'timestamp'}, $data->{'hash'});
+		} else { 
+			$errors_number++;
+		}
 	}
 
 	if ( $errors_number > 0 ) {
 		log_msg("send_perf.pl::process_backlog(): $errors_number sending errors / $total_number lines", "LOG_ERR");
 	} else {
-		log_msg("send_perf.pl::process_backlog(): $total_number backlog lines processed without any error", "LOG_INFO");
+		if ( $total_number > 0 ) {
+			log_msg("send_perf.pl::process_backlog(): $total_number backlog lines processed without any error", "LOG_INFO");
+		}
 	}
 }
 
@@ -270,20 +311,23 @@ sub process_backlog {
 # checks how to send perfdata and send them
 # backups are done in case of failure
 #
+# @args		: the message and the archive object
+# @return	: undef
+#
 sub process_perfdata {
 	my $message = shift;
 	my $archive = shift;
 
 	if ( defined($$opt{s}) ) {
-		if ( send_perfdata($message, $$opt{s} == 1 ) ) {
-			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
+		if ( send_perfdata( $message, $$opt{s} ) == 1 ) {
+			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_INFO");
 			backup_perfdata($message, $archive) if ( defined $archive );
 		}
 	}
 
-	if ( defined($$opt{H}) && defined($$opt{p}) ) {
-		if ( send_perfdata($message, $$opt{H}, $$opt{p}) == 1 ) {
-			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_DEBUG");
+	if ( defined($$opt{H}) and defined($$opt{p})) {
+		if ( send_perfdata( $message, $$opt{H}, $$opt{p} ) == 1 ) {
+			log_msg("send_perf.pl:process_perfdata(): send_perfdata failed, let's backup the data", "LOG_INFO");
 			backup_perfdata($message, $archive) if ( defined $archive );
 		}
 	}
@@ -301,6 +345,7 @@ if ( defined $archive ) {
 		process_perfdata($$opt{d}, $archive);
 	}
 } else {
+	log_msg("send_perf: archive is not defined", "LOG_INFO");
 	process_perfdata($$opt{d}, undef);
 }
 
