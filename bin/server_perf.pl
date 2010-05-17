@@ -1,7 +1,9 @@
 #!/usr/bin/perl
+# tsync:: casole
+# sync:: calci
 ############################################################################
 ##                                                                         #
-## perf2rrd.pl                                                             #
+## server_perf.pl                                                          #
 ## Written by <detrak@caere.fr>                                            #
 ##                                                                         #
 ## This program is free software; you can redistribute it and/or modify it #
@@ -49,6 +51,7 @@ use N2Cacti::Cacti;
 use N2Cacti::Cacti::Data;
 use N2Cacti::Cacti::Graph;
 use N2Cacti::Cacti::Host;
+use N2Cacti::Cacti::Tree;
 use N2Cacti::RRD;
 use Net::Server::Daemonize qw(daemonize);
 use IO::Handle;
@@ -89,6 +92,8 @@ my $opt = {};
 my $rrderror = "";
 my $base_rrd = {};
 my ($io,$line);
+
+our $shutdown_signal = 0;
 
 getopts( "f:mvduc:p:s:h", $opt );
 usage() if (defined($opt->{h}));
@@ -134,6 +139,16 @@ sub log_msg {
 	} else {
 		print "$level:\t$str\n";
 	}
+}
+
+#
+# set_shutdown_signal
+#
+# sets the flag to true
+# the current data are processed until the end before exiting
+#
+sub set_shutdown_signal {
+	$shutdown_signal = 1;
 }
 
 #
@@ -196,9 +211,9 @@ sub usage {
 
 # We make a clean exit on signals SIGTERM / KILL
 $SIG{TERM} = \&clean_exit;
-$SIG{KILL} = \&clean_exit;
+$SIG{KILL} = \&clean_exit;;
 
-daemonize('cacti', 'cacti', "$$config{PID_FILE}") if (defined($opt->{d}));
+daemonize('cacti', 'cacti', "$$config{PID_FILE}") if ( defined($opt->{d}) );
 
 # define the archive mode
 my $archive = new N2Cacti::Archive({
@@ -236,10 +251,11 @@ while (1) {
 		log_msg("socket created", "LOG_DEBUG");
 	}
 
-	while ($io->recv($line,16384)){
+	while ( $io->recv($line,16384) ) {
 		my $hash = md5_hex($line);
+		my $pid;
 
-		#-- return the md5 line
+		# return the md5 line
 		if( defined($$opt{s}) || defined($$opt{p}) ) {
 			my($port, $ipaddr) = sockaddr_in($io->peername);
 			my $hishost = gethostbyaddr($ipaddr, AF_INET);
@@ -249,7 +265,19 @@ while (1) {
 
 		chomp $line;
 		log_msg("reception: $line", "LOG_DEBUG");
-		$archive->put("$line");
+
+		# if the data is already in the backlog (failed process) it is skipped
+		next if ( $archive->is_duplicated($line) );
+		$archive->put($line);
+
+		# we fork only if we can update the rrd files
+#		if ( $$opt{d} ) {
+#			$pid = fork;
+#		}
+#
+#		next if $pid != 0;
+#		log_msg("server_perf.pl: fork !", "LOG_DEBUG");
+
 		my @fields = split(/\|/, $line);
 		my (	$servicedesc, 
 			$hostname, 
@@ -272,6 +300,7 @@ while (1) {
 			$fields[SVC_SERVICEPERFDATA]
 		);
 
+		log_msg("data type: ". $fields[0], "LOG_DEBUG");
 		log_msg("service desc : ". $fields[SVC_SERVICEDESC], "LOG_DEBUG");
 		log_msg("hostname : ". $fields[SVC_HOSTNAME], "LOG_DEBUG");
 		log_msg("host address : ". $fields[SVC_HOSTADDRESS], "LOG_DEBUG");
@@ -283,67 +312,93 @@ while (1) {
 		log_msg("service perfdata : ".$fields[SVC_SERVICEPERFDATA], "LOG_DEBUG");
 
 		# Host perfdata process
-		if ( $fields[0]=~ m/HOSTPERFDATA/i ) {
+		if ( $fields[0] =~ m/HOSTPERFDATA/i ) {
+			log_msg("Recieved HOSTPERFDATA, skip it!", "LOG_INFO");
 			next; # non pris en compte pour le moment
 		}
 	
-		if ( ! defined( $fields[SVC_SERVICEPERFDATA] ) ){
+		if ( not defined( $fields[SVC_SERVICEPERFDATA] ) ){
+			log_msg("SVC_SERVICEPERFDATA is not defined, skip it!", "LOG_INFO");
 			next; # ignore line without perfdata
 		}
 
 		# Service perfdata process
-		if ( $fields[0]=~ m/SERVICEPERFDATA/i || $fields[0] =~ m/SERVICEARCHIVEPERFDATA/i ) {
-			if ( ! defined ($$base_rrd{$hostname}{$servicedesc} ) ) {
-				log_msg("new N2Cacti::RRD ($hostname,$servicedesc, $timet)", "LOG_DEBUG");
-				$$base_rrd{$hostname}{$servicedesc} = new N2Cacti::RRD({
-					service_description => "$servicedesc", 
-					hostname	=> "$hostname",
-					start_time	=> $timet,
-					with_mysql	=> defined($opt->{m})
+		log_msg("testing fields[0] -> SERVICEPERFDATA or SERVICEARCHIVEPERFDATA", "LOG_DEBUG");
+		if ( $fields[0] !~ m/SERVICEPERFDATA|SERVICEARCHIVEPERFDATA/i ) {
+			log_msg("testing fields[0] failed, skip!", "LOG_INFO");
+			next;
+		}
+
+		log_msg("testing base_rrd's definition", "LOG_DEBUG");
+		if ( not defined ($$base_rrd{$hostname}{$servicedesc} ) ) {
+			log_msg("new N2Cacti::RRD ($hostname,$servicedesc, $timet)", "LOG_DEBUG");
+			$$base_rrd{$hostname}{$servicedesc} = new N2Cacti::RRD({
+				service_description => "$servicedesc", 
+				hostname	=> "$hostname",
+				start_time	=> $timet,
+				with_mysql	=> defined($opt->{m})
+			});
+		}
+
+			$$base_rrd{$hostname}{$servicedesc}->with_mysql($fields[0]=~m/SERVICEPERFDATA/i && defined($$opt{m}));
+			if ( $$base_rrd{$hostname}{$servicedesc}->update_rrd($serviceperfdata,$timet) ) {
+				$archive->remove($timet,$hash);
+			}
+			#$$base_rrd{$hostname}{$servicedesc}->update_rrd_el($serviceexecutiontime,$servicelatency,$servicestate,$timet);
+
+			if ( defined($opt->{u}) && $$base_rrd{$hostname}{$servicedesc}->validate() ) {
+				my $host = new N2Cacti::Cacti::Host({
+					hostname	=> $hostname,
+					hostaddress	=> $hostaddress
+				});
+				$host->create_host();
+
+				# create data_template and instanciate it!
+				my $data_template = new N2Cacti::Cacti::Data({
+					hostname		=> $hostname,
+					hostaddress		=> $hostaddress,
+					service_description	=> $servicedesc,
+					rrd			=> $$base_rrd{$hostname}{$servicedesc}
 				});
 
-				if ( defined($opt->{u}) && $$base_rrd{$hostname}{$servicedesc}->validate() ) {
-					my $host = new N2Cacti::Cacti::Host({
-						hostname	=> $hostname,
-						hostaddress	=> $hostaddress
-					});
-					$host->create_host();
-			
-					# create data_template and instanciate it!
-					my $data_template = new N2Cacti::Cacti::Data({
-						hostname		=> $hostname,
-						hostaddress		=> $hostaddress,
-						service_description	=> $servicedesc,
-						rrd			=> $$base_rrd{$hostname}{$servicedesc}
-					});
+				$data_template->create_individual_instance();
+#				$data_template->create_instance();
+#				$data_template->update_rrd();
 
-					$data_template->create_instance();
-					$data_template->update_rrd();
-					$data_template->create_individual_instance();
+				# create graph_template and instanciate it!
+				my $graph_template = new N2Cacti::Cacti::Graph({
+					hostname		=> $hostname,
+					hostaddress		=> $hostaddress,
+					service_description	=> $servicedesc,
+					graph_item_type		=> $config->{GRAPH_ITEM_TYPE},
+					graph_item_colors	=> $config->{GRAPH_ITEM_COLORS},
+					rrd			=> $$base_rrd{$hostname}{$servicedesc}
+				});
 
-					# create graph_template and instanciate it!
-					my $graph_template = new N2Cacti::Cacti::Graph({
-						hostname		=> $hostname,
-						hostaddress		=> $hostaddress,
-						service_description	=> $servicedesc,
-						graph_item_type		=> $config->{GRAPH_ITEM_TYPE},
-						graph_item_colors	=> $config->{GRAPH_ITEM_COLORS},
-						rrd			=> $$base_rrd{$hostname}{$servicedesc}
-					});
+				$graph_template->create_template();
+				$graph_template->create_instance();
+				$graph_template->update_input();
+#				$graph_template->create_individual_instance();
 
-					$graph_template->create_template();
-					$graph_template->create_instance();
-					$graph_template->update_input();
-					$graph_template->create_individual_instance();
-				}
+				# creates the graph tree
+				my $graph_tree = new N2Cacti::Cacti::Tree($config);
+				$graph_tree->update($graph_tree->get_appl_info());
 			}
+#		}
 
-			# Saving the data into files and/or the database
-			if($$base_rrd{$hostname}{$servicedesc}->validate()){
-				$$base_rrd{$hostname}{$servicedesc}->with_mysql($fields[0]=~m/SERVICEPERFDATA/i && defined($$opt{m}));
-				$$base_rrd{$hostname}{$servicedesc}->update_rrd($serviceperfdata,$timet);
-				$$base_rrd{$hostname}{$servicedesc}->update_rrd_el($serviceexecutiontime,$servicelatency,$servicestate,$timet);
-			}
+		# Saving the data into files and/or the database
+#		if ( $$base_rrd{$hostname}{$servicedesc}->validate() ) {
+#			$$base_rrd{$hostname}{$servicedesc}->with_mysql($fields[0]=~m/SERVICEPERFDATA/i && defined($$opt{m}));
+#
+#			if ( $$base_rrd{$hostname}{$servicedesc}->update_rrd($serviceperfdata,$timet) ) {
+#				$archive->remove($timet,$hash);
+#			}
+#
+#				$$base_rrd{$hostname}{$servicedesc}->update_rrd_el($serviceexecutiontime,$servicelatency,$servicestate,$timet);
+#			}
+
+		if ( $shutdown_signal ) {
+			clean_exit;
 		}
 	}
 }

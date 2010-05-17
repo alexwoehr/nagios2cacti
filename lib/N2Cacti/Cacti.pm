@@ -1,3 +1,5 @@
+# tsync:: casole
+# sync:: calci
 ###########################################################################
 #                                                                         #
 # N2Cacti::Cacti                                                          #
@@ -101,17 +103,27 @@ our $consolidation_functions = reverse_hash(\%__consolidation_functions);
 our $data_source_type = reverse_hash(\%__data_source_type);
 
 
-#-----------------------------------------------------------------
-# -- genere un clé unique via un hash md5
-# -- utiliser par cacti pour eviter des doublons lors d'import/export
+#
+# generate_hash
+#
+# Creates a md5sum to prevent duplicates
+#
+# @args		: the string to process
+# @return	: the hash
+#
 sub generate_hash {
 	my $string=shift || "N2Cacti::Cacti".rand(1000).time();
 	return md5_hex($string);
 }
 
-
-#--------------------------------------------------------------
-
+#
+# get_cacticonfig
+#
+# Gets Cacti's properties from its config file
+#
+# @args		:
+# @return	:
+#
 sub get_cacticonfig{
 	my $config = get_config();
 	my $cacti_config = {
@@ -127,11 +139,11 @@ sub get_cacticonfig{
 	or Main::log_msg("N2Cacti::Cacti::get_cacticonfig(): unable to open ".$config->{CACTI_DIR}."include/config.php", "LOG_ERR") and return undef;
 	while(<CFG>){
 		chomp;
-		next if /^#/;    			# Skip comments
-		next if /^$/;    			# Skip empty lines
+		next if /^#/;    		# Skip comments
+		next if /^$/;    		# Skip empty lines
 		next if !/^\$database/; 	# Skip no parameter lines
-		s/#.*//;         			# Remove partial comments
-		s/\$//; 					# Remove $
+		s/#.*//;         		# Remove partial comments
+		s/\$//; 			# Remove $
 		s/\"//g;
 		s/(;|\ )//g;
 
@@ -147,9 +159,14 @@ sub get_cacticonfig{
 }
 
 
-#--------------------------------------------------------------
-
-
+#
+# print_hash
+#
+# A basic hash to string function
+#
+# @args		: the hash
+# @return	: none
+#
 sub print_hash {
 	print "hash:\n";
 	my $hash = shift;
@@ -159,6 +176,14 @@ sub print_hash {
 	}
 }
 
+#
+# reverse_hash
+#
+# Keys <-> values switch
+#
+# @args		: the hash
+# @return	: the switched hash
+#
 sub reverse_hash {
     my $hash = shift;
     my $hash_out = {};
@@ -168,13 +193,14 @@ sub reverse_hash {
     return $hash_out;
 }
 
-#---------------------------------------------------------------
-
+#
+# database
+#
+# Gets the DB object
+#
 sub database {
 	return shift->{database};
 }
-
-
 
 1;
 

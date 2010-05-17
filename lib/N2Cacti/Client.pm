@@ -1,6 +1,8 @@
+# tsync::riola-bck romagna-bck  emilia-bck  imola casole
+# sync:: grado calci donnini-bck
 ############################################################################
 ##                                                                         #
-## send_perf.pl                                                            #
+## Client.pm                                                               #
 ## Written by <mathieu.grzybek@gmail.com>                                  #
 ##                                                                         #
 ## This program is free software; you can redistribute it and/or modify it #
@@ -45,9 +47,9 @@ use Digest::MD5 qw(md5 md5_hex md5_base64);
 #
 # new
 #
-# the constructor
+# The constructor
 #
-# by default nothing is written locally and the timeout is set to 1 second
+# By default nothing is written locally and the timeout is set to 1 second
 #
 sub new {
 	my $class = shift;
@@ -81,7 +83,7 @@ sub new {
 #
 # send
 #
-# sends the given data to n2cacti server
+# Sends the given data to n2cacti server
 #
 # @args		: the message
 # @return	: data has been sent or backloged if not sent (1) || ko (0)
@@ -106,18 +108,18 @@ sub send {
 	}
 
 	if ( not $this->check_message($message) ) {
-		Main::log_msg("Client::send(): bad message", "LOG_ERR");
+		Main::log_msg("N2Cacti::Client::send(): bad message", "LOG_ERR");
 		return 0;
 	}
 
 	if ( ( $this->{write_backlogs} or $this->{check_duplicates} ) and not defined $this->{archive} ) {
-		Main::log_msg("Client::send():: though write_backlogs or check_duplicates are true, archive is null", "LOG_ERR");
+		Main::log_msg("N2Cacti::Client::send():: though write_backlogs or check_duplicates are true, archive is null", "LOG_ERR");
 		return 0;
 	}
 
 	if ( $this->{check_duplicates} ) {
 		if ( $this->{archive}->is_duplicated($message) ) {
-			Main::log_msg("Client::send(): the message has already been sent", "LOG_ERR");
+			Main::log_msg("N2Cacti::Client::send(): the message has already been sent", "LOG_ERR");
 			return 0;
 		}
 	}
@@ -154,6 +156,7 @@ sub backup_perfdata {
 #
 # Sends the data though a UDP or socket
 # A timeout is set while sending the data
+# We need to use an eval bloc to limit the timoout's spread
 #
 # @args		: message, hostname and port number
 # @return	: sucess (0) or failure (1)
@@ -180,13 +183,13 @@ sub send_perfdata {
 			PeerAddr	=> $this->{hostname},
 			Timeout		=> 10
 		) ) {
-			Main::log_msg("send_perf.pl::send_perdata(): INET->new($this->{hostname}:$this->{port}):$!", "LOG_CRIT");
-			return 1;
+			Main::log_msg("N2Cacti::Client::send_perdata(): INET->new($this->{hostname}:$this->{port}):$!", "LOG_CRIT");
+			return 0;
 		}
 	} else {
 		if ( ! -S $this->{sockpath} ) {
-			Main::log_msg("send_perf.pl::send_perfdata(): $this->{sockpath} is not a socket", "LOG_CRIT");
-			return 1;
+			Main::log_msg("N2Cacti::Client::send_perfdata(): $this->{sockpath} is not a socket", "LOG_CRIT");
+			return 0;
 		}
 
 		if ( not $sock = IO::Socket::UNIX->new(
@@ -194,8 +197,8 @@ sub send_perfdata {
 			Type		=> $type,
 			Timeout		=> 10
 		) ) {
-			Main::log_msg("send_perf.pl::send_perdata(): UNIX->new($this->{sockpath}):$!", "LOG_CRIT");
-			return 1;
+			Main::log_msg("N2Cacti::Client::send_perdata(): UNIX->new($this->{sockpath}):$!", "LOG_CRIT");
+			return 0;
 		}
 	}
 
@@ -204,15 +207,14 @@ sub send_perfdata {
 	$hash = md5_hex($message);
 
 	if ( not $sock->send($message) ) {
-		Main::log_msg("send_perf.pl::send_perfdata(): $!", "LOG_ERR");
-		return 1;
+		Main::log_msg("N2Cacti::Client::send_perfdata(): $!", "LOG_ERR");
+		return 0;
 	}
 
-	# We need to use an eval bloc to limit the timoout's spread
 	eval {
 		no warnings 'all';
 		local $SIG{ALRM} = sub {
-			Main::log_msg("send_perf.pl::send_perfdata(): timeout ${TIMEOUT}s", "LOG_CRIT");
+			Main::log_msg("N2Cacti::Client::send_perfdata(): timeout ${TIMEOUT}s", "LOG_CRIT");
 			die "transmit error";
 		};
 	  	alarm $TIMEOUT;
@@ -222,11 +224,11 @@ sub send_perfdata {
 		if ( $sock->recv($result, $MAXLEN) ) {
 			alarm 0;
 			$log_line .= "OK";
-			Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_DEBUG");
+			Main::log_msg("N2Cacti::Client::send_perfdata(): $log_line", "LOG_DEBUG");
 		} else {
 			alarm 0;
 			$log_line .= $!;
-			Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
+			Main::log_msg("N2Cacti::Client::send_perfdata(): $log_line", "LOG_ERR");
 			die "transmit error";
 		}
 	};
@@ -239,7 +241,7 @@ sub send_perfdata {
 
 	if ( $result ne $hash ) {
 		$log_line .= "KO : incorrect hash";
-		Main::log_msg("send_perf.pl::send_perfdata(): $log_line", "LOG_ERR");
+		Main::log_msg("N2Cacti::Client::send_perfdata(): $log_line", "LOG_ERR");
 		return 0;
 	}
 
@@ -248,6 +250,11 @@ sub send_perfdata {
 
 #
 # process_backlog
+#
+# Gets the backlogs from the database and push them
+#
+# @args		: none
+# @return	: success (1) || problem (0)
 #
 # 
 sub process_backlog {
@@ -263,7 +270,7 @@ sub process_backlog {
 	my $io = $this->{archive}->open();
 
 	if ( not defined $io ) {
-		Main::log_msg("send_perf.pl::process_backlog(): db handler is not defined", "LOG_CRIT");
+		Main::log_msg("N2Cacti::Client::process_backlog(): db handler is not defined", "LOG_CRIT");
 		return 0;
 	}
 
@@ -291,17 +298,22 @@ sub process_backlog {
 	}
 
 	if ( $failed ) {
-		Main::log_msg("send_perf.pl::process_backlog(): error while sending backlogs", "LOG_ERR");
-	} else {
-		Main::log_msg("send_perf.pl::process_backlog(): $total_number backlog lines processed without any error", "LOG_INFO");
+		Main::log_msg("N2Cacti::Client::process_backlog(): error while sending backlogs", "LOG_ERR");
+		return 0;
 	}
+
+	Main::log_msg("N2Cacti::Client::process_backlog(): $total_number backlog lines processed without any error", "LOG_INFO");
+	return 1;
 }
 
 #
 # check_message
 #
-# checks if the given message is perfdata compliant
-# the checks are basic
+# Checks if the given message is perfdata compliant
+# The checks are basic
+#
+# @args		: the message
+# @return	: OK (1) || KO (0)
 #
 sub check_message {
 	my $this	= shift;

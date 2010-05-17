@@ -1,4 +1,7 @@
+# tsync::riola-bck romagna-bck  emilia-bck imola casole donnini-bck
+# sync::donnini-bck  grado calci
 use strict;
+use warnings;
 
 package N2Cacti::Archive;
 
@@ -16,6 +19,14 @@ BEGIN {
         @EXPORT = 	qw();
 }
 
+#
+# new
+#
+# Archive's constructor
+#
+# @in	: class's name, hashed params
+# @out	: the new object
+#
 sub new {
 	my $class=shift;
 	my $attr = shift;
@@ -29,7 +40,7 @@ sub new {
 		io		=> undef,
 		open		=> \&open,
 		fullpath	=> "",
-		remove_log	=> \&remove,
+		remove		=> \&remove,
 		fetch		=> \&fetch,
 		put		=> \&put
 	};
@@ -59,6 +70,9 @@ sub new {
 # If there is already one row -> update
 # Else -> insert
 #
+# We use "insert" or "update" because "replace" does not seem to work (but not sure of that)
+# The timestamp is checked : is it scalar ?
+#
 sub put {
 	my $this = shift;
 	my $data = shift;
@@ -84,9 +98,21 @@ sub put {
 		return 1;
 	}
 
-	$query = "REPLACE INTO log ( 'timestamp', 'data', 'hash' ) VALUES ( '$data_tab[4]', '$data', '".md5_hex($data)."' );";
+#	$query = "REPLACE INTO log ( 'timestamp', 'data', 'hash' ) VALUES ( '$data_tab[4]', '$data', '".md5_hex($data)."' );";
 
-	Main::log_msg("N2Cacti::Archive::put(): query : $query", "LOG_DEBUG");
+        $query = "SELECT count(*) FROM log WHERE timestamp = '$data_tab[4]';";
+        $sth = $this->{io}->prepare($query);
+        $sth->execute();
+
+        @result = $sth->fetchrow_array;
+
+        if ( $result[0] == 0 ) {
+		$query = "INSERT INTO log ( 'timestamp', 'data', 'hash' ) VALUES ( '$data_tab[4]', '$data', '".md5_hex($data)."' );";
+	} else {
+		$query = "UPDATE log SET data='$data', hash='".md5_hex($data)."' WHERE timestamp='$data_tab[4]'";
+	}
+
+	Main::log_msg("N2Cacti::Archive::put(): query : $query", "LOG_INFO");
 
 	if ( $this->{io}->do($query) ) {
 		Main::log_msg("<-- N2Cacti::Archive::put()", "LOG_DEBUG");
@@ -102,6 +128,11 @@ sub put {
 # open
 #
 # Connects to the DB file
+#
+# OK : $this->{io} is defined
+# KO : cannot open the SQLite file
+#
+# Checks if the log table exists, else create it
 #
 sub open {
 	my $this = shift;
@@ -184,8 +215,12 @@ sub open_daily {
 }
 
 #
+# init
+#
 # create the DB's structure
 # use timestamp and md5 of data as key
+#
+# @return : OK (1) || KO (0)
 #
 sub init {
 	my $this = shift;
@@ -199,9 +234,9 @@ sub init {
 	$this->{io}->do($query);
 	if ( $@ ) {
 		Main::log_msg("N2Cacti::Archive::init(): cannot execute query : $query : $@", "LOG_CRIT");
-		return 1;
-	} else {
 		return 0;
+	} else {
+		return 1;
 	}
 }
 
@@ -250,21 +285,22 @@ sub remove {
 	my $query = "DELETE FROM log WHERE timestamp = '$timestamp' and hash='$hash';";
 
 	if ( $this->{io}->do($query) ) {
-		return 0;
-	} else {
-		Main::log_msg("N2Cacti::Archive::remove_log(): cannot execute query : $query : $DBI::errstr", "LOG_CRIT");
+		Main::log_msg("N2Cacti::Archive::remove(): query : $query", "LOG_INFO");
 		return 1;
+	} else {
+		Main::log_msg("N2Cacti::Archive::remove(): cannot execute query : $query : $DBI::errstr", "LOG_CRIT");
+		return 0;
 	}
 }
 
 #
-# check_duplicates
+# is_duplicated
 #
 # Checks if the current perfdata is already in the backlog
 #
-# @return	: yes (0) or no (1)
+# @return	: yes (1) or no (0)
 #
-sub check_duplicates {
+sub is_duplicated {
 	my $this = shift;
 	my $data = shift;
 
@@ -284,9 +320,9 @@ sub check_duplicates {
 	@result = $sth->fetchrow_array;
 
 	if ( $result[0] == 0 ) {
-		return 1;
-	} else {
 		return 0;
+	} else {
+		return 1;
 	}
 }
 

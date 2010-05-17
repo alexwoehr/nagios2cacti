@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 # nagios: -epn
 # disable Embedded Perl Interpreter for nagios 3.0
+# tsync:: imola casole donnini-bck
+# sync::donnini-bck  grado calci
 ############################################################################
 ##                                                                         #
 ## send_perf2.pl                                                           #

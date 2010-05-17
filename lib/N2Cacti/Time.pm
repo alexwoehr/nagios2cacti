@@ -1,3 +1,5 @@
+# tsync::riola-bck romagna-bck  emilia-bck imola casole donnini-bck
+# sync::donnini-bck  grado calci
 ###########################################################################
 #                                                                         #
 # N2Cacti::Time                                                           #
@@ -25,9 +27,18 @@ BEGIN {
 	@EXPORT = qw(get_time_forday);
 }   
 
+#
+# get_time_forday
+#
+# Returns the tiemstamp
+#
+# @args		: the date andtime
+# @return	: the timestamp
+#
 sub get_time_forday {
-	my $date = shift;
-	my $time = shift;
+	my $date	= shift;
+	my $time	= shift;
+
 	return &Date::Manip::UnixDate(&Date::Manip::ParseDate($date." ".$time),"%s");
 }
 
