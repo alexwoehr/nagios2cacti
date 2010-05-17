@@ -1,3 +1,5 @@
+# tsync:: casole
+# sync:: calci
 ###########################################################################
 #                                                                         #
 # N2Cacti::Cacti::Data                                                    #
@@ -36,16 +38,23 @@ my $tables = {
 	data_template_data 	=> '',
 	data_template_rrd	=> '',
 	data_template_data_rra	=> '',
-	data_local			=> '',
+	data_local		=> '',
 };
 
-
+#
+# new
+#
+# The constructor
+#
+# @args		: parameters hash ref { tables, hostname, service_description, rrd, source }
+# @return	: the object
+#
 sub new {
-	#-- contient la definition des tables
-	my $class = shift;	
-	my $attr= shift;
-	my %param = %$attr if $attr;
-	my $this={
+	my $class	= shift;	
+	my $attr	= shift;
+
+	my %param	= %$attr if $attr;
+	my $this	= {
 		tables			=> $tables,
 		hostname		=> $param{hostname},
 		service_description	=> $param{service_description},
@@ -55,12 +64,11 @@ sub new {
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::new()", "LOG_DEBUG");
 
-	$this->{template} = $this->{rrd}->getTemplate();
-	$this->{service_name} = $this->{rrd}->getServiceName();
-	$this->{data_template_name} = "$$this{source} - $$this{service_name}";
-	$this->{data_template_data_name} = "|host_description| - $$this{service_name}";
+	$this->{template}			= $this->{rrd}->getTemplate();
+	$this->{service_name}			= $this->{rrd}->getServiceName();
+	$this->{data_template_name}		= "$$this{source} - $$this{service_name}";
+	$this->{data_template_data_name}	= "|host_description| - $$this{service_name}";
 
-	#-- Connexion to cacti database
 	my $cacti_config = get_cacticonfig();
 	$this->{database} = new N2Cacti::database({
 		database_type		=> $$cacti_config{database_type},
@@ -71,53 +79,89 @@ sub new {
 		database_port		=> $$cacti_config{database_port}
 	});
 
-        
 	bless ($this, $class);
 
 	Main::log_msg("<-- N2Cacti::Cacti::Data::new()", "LOG_DEBUG");
 	return $this;
 }
 
-# -------------------------------------------------------------
-
-sub tables{
+#
+# tables
+#
+# Tables accessor
+#
+# @args		: none
+# @return	: the tables
+#
+sub tables {
 	return shift->{tables};
 }
 
-sub database{
+#
+# database
+#
+# Database accessor
+#
+# @args		: none
+# @return	: the database
+#
+sub database {
 	return shift->{database};
 }
 
-# -------------------------------------------------------------
+#
+# get_input
+#
+# Creates an input method and returns it
+#
+# @args		: none
+# @return	: the input method object
+#
 sub get_input {
-	my $this = shift;
+	my $this	= shift;
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG");
 
-	my $method = new N2Cacti::Cacti::Method({ source => $$this{source} });
-	my $input = $method->create_method();
+	my $method	= new N2Cacti::Cacti::Method({ source => $$this{source} });
+	my $input	= $method->create_method();
 
 	Main::log_msg("<-- N2Cacti::Cacti::Data::get_input()", "LOG_DEBUG");
 	return $input;
 }
 
-#-- verify if the template exist
+#
+# template_exist
+#
+# Does the template exist ?
+#
+# @args		: none
+# @return	: yes (1) || no (0)
+#
 sub template_exist {
-	my $this=shift;
+	my $this	= shift;
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG");
 
-	my $result = $this->database->item_exist("data_template", { hash => generate_hash($this->{data_template_name}) });
+	my $result	= $this->database->item_exist("data_template", { hash => generate_hash($this->{data_template_name}) });
 
 	Main::log_msg("<-- N2Cacti::Cacti::Data::template_exist()", "LOG_DEBUG");
 
 	return $result;
 }
 
+#
+# table_save
+#
+# Calls sql_save
+#
+# @args		: the table hash ref
+# @return	: 
+#
 sub table_save {
-	my $this = shift;
-	my $tablename=shift;
-	my $result = undef;
+	my $this	= shift;
+	my $tablename	= shift;
+
+	my $result	= undef;
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::table_save()", "LOG_DEBUG");
 
@@ -132,36 +176,52 @@ sub table_save {
 	return $result;
 }
 
-#-- create individual template and instance for each couple (service_name, datasource) not in main datasource
+#
+# create_individual_instance
+#
+# Create individual template and instance for each couple (service_name, datasource) not in main datasource
+#
+# @args		: none
+# @return	: none
+#
 sub create_individual_instance {
-	my $this = shift;
+	my $this	= shift;
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG");
 
-	my $main_rrd = $this->{rrd}->getPathRRD();
-	my $data_template_name = $this->{data_template_name};
-	my $data_template_data_name = $this->{data_template_data_name};
-	my $datasource = $this->{rrd}->{datasource};
+	my ($ds_name, $ds);
 
-	while (my ($ds_name, $ds) = each (%$datasource)){
-		next if ($main_rrd eq $ds->{rrd_file});
-		$this->{data_template_name} = "$this->{source} - $$this{service_name} - $ds_name";
-		$this->{data_template_data_name} = "|host_description| - $$this{service_name} - $ds_name";
-		$this->{rrd}->setPathRRD($ds->{rrd_file});
+	my $data_template_name		= $this->{data_template_name};
+	my $data_template_data_name	= $this->{data_template_data_name};
+	my $datasource			= $this->{rrd}->{datasource};
+
+	foreach $ds_name (keys %$datasource) {
+
+		$this->{data_template_name}		= "$this->{source} - $$this{service_name} - $ds_name";
+		$this->{data_template_data_name}	= "|host_description| - $$this{service_name} - $ds_name";
+
+		$this->{rrd}->setPathRRD($datasource->{$ds_name}->{rrd_file});
 		$this->create_instance();
 		$this->update_rrd();
 	}
 
-	$this->{rrd}->setPathRRD($main_rrd);
 	$this->{data_template_name} = $data_template_name;
 	$this->{data_template_data_name} = $data_template_data_name;
+
 	Main::log_msg("<-- N2Cacti::Cacti::Data::create_individual_instance()", "LOG_DEBUG");
 }
 
-
-# -------------------------------------------------------------
+#
+# create_instance
+#
+# Creates the data template instantiate it
+#
+# @args		: none
+# @return	: the new id or undef
+#
 sub create_instance {
 	my $this		= shift;
+
 	my %ids			= ();
 	my $source 		= $this->{source};
 	my ($dl, $dtd, $dtdt);
@@ -171,59 +231,54 @@ sub create_instance {
 	#-- if template dont exist, we must create it!
 	if( $this->template_exist == 0 ) {
 		$dtdt = $this->create_template(shift||0);
-	#} else {
 	}
 		$this->database->begin();
-		eval{
+		eval {
 			# insert the link in data_template_data :
 			# 	local_data_id : data_local->id
 			# 	data_template_id : data_template->id
 
-			$ids{data_template_id} = $this->database->get_id("data_template", { hash => generate_hash($this->{data_template_name}) });
-
-			#-- the data_local dont exist, we need to create it
+			#-- the data_local doesn't exist, we need to create it
 			#-- create the data_local parameter in data_template_data
-			$dl->{id} = "0";
-			$dl->{host_id} = $this->database->get_id("host", {description => $$this{hostname}});
-			$dl->{data_template_id}	= $ids{data_template_id};
-			$dl->{id} = $this->table_save("data_local", $dl);
+			$dl->{id}		= "0";
+			$dl->{host_id}		= $this->database->get_id("host", {description => $$this{hostname}});
+			$dl->{data_template_id}	= $this->database->get_id("data_template", { hash => generate_hash($this->{data_template_name}) });
+			$dl->{id}		= $this->table_save("data_local", $dl);
 
 			#-- create of data_template with the template parameter
-			#if ( $this->database->item_exist("data_template_data" , { data_template_id => $ids{data_template_id}, local_data_id => 0 } ) == 0 ) {
-				$dtd->{id} = "0";
-				$dtd->{name} = "|host_description| - $this->{service_description}";
-				$dtd->{local_data_template_data_id} = $dtdt;
-				$dtd->{data_template_id} = $ids{data_template_id};
-				$dtd->{local_data_id} = $dl->{id};
-				$dtd->{data_source_path} = $this->{rrd}->{rrd_file};
-				$dtd->{name_cache} = $dtd->{name};
-				$dtd->{data_input_id} = $this->database->get_id("data_input", { name => "$$this{source} import via n2cacti" });
-				$dtd->{name_cache} =~ s/\|host_description\|/$$this{hostname}/g;
-				$dtd->{id} = $this->table_save("data_template_data", $dtd);
+			if ( $this->database->item_exist("data_template_data" , { data_template_id => $dl->{data_template_id}, local_data_id => $dl->{id} } ) == 0 ) {
+				$dtd->{id}				= "0";
+				$dtd->{name}				= "|host_description| - $this->{service_description}";
+				$dtd->{local_data_template_data_id}	= $dtdt;
+				#$dtd->{data_template_id} = $dl->{host_id};
+				$dtd->{data_template_id}		= $dl->{data_template_id};
+				$dtd->{local_data_id}			= $dl->{id};
+				$dtd->{data_source_path}		= $this->{rrd}->{rrd_file};
+				$dtd->{name_cache}			= $dtd->{name};
+				$dtd->{data_input_id}			= $this->database->get_id("data_input", { name => "$$this{source} import via n2cacti" });
+				$dtd->{name_cache}			=~ s/\|host_description\|/$$this{hostname}/g;
+				$dtd->{id}				= $this->table_save("data_template_data", $dtd);
+
 				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): saving data_template_data($$dtd{id}", "LOG_DEBUG");
-			#}
+			}
 
-			$dtd = $this->database->db_fetch_hash("data_template_data", { data_template_id => $ids{data_template_id}, local_data_id => 0});
+			$dtd = $this->database->db_fetch_hash("data_template_data", { data_template_id => $dtd->{data_template_id}, local_data_id => $dl->{id} });
 			
-			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): $ids{data_template_id} - $$dtd{id}", "LOG_DEBUG");
-
-			#$ids{data_template_data_id}=$dtd->{id}; 		
-
+			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): $dtd->{data_template_id} - $dtd->{id}", "LOG_DEBUG");
 
 			#-- get the data_local
-			$ids{host_id} = $this->database->get_id("host", {description => $$this{hostname}} );
-
-			if( $this->database->item_exist("data_local", { host_id => $ids{host_id}, data_template_id=>$ids{data_template_id}}) == 1 ){
-				$dl = $this->database->db_fetch_hash("data_local", { host_id => $ids{host_id}, data_template_id=>$ids{data_template_id}});
+			if ( $this->database->item_exist("data_local", { host_id => $dl->{host_id}, data_template_id => $dtd->{data_template_id} }) == 1 ) {
+				$dl = $this->database->db_fetch_hash("data_local", { host_id => $dl->{host_id}, data_template_id => $dl->{data_template_id}});
 
 				Main::log_msg("N2Cacti::Cacti::Data::create_instance(): data_local for host [$$this{hostname}] and service [$$this{service_description}] exist", "LOG_DEBUG");
 				return $dl->{id};
 			}
 
 			Main::log_msg("N2Cacti::Cacti::Data::create_instance(): creating rra", "LOG_DEBUG");
+
 			#-- creating rra (we're creating four RRA (daily, weekly, monthly, yearly)
 			$this->database->execute("delete from data_template_data_rra where data_template_data_id='$$dtd{id}'");
-			for (my $i=0;$i<4;$i++){
+			for ( my $i=0;$i<4;$i++ ) {
 				my $dtrra = $this->database->new_hash("data_template_data_rra");
 				$dtrra->{data_template_data_id}=$dtd->{id};
 				$dtrra->{rra_id}=$i+1;
@@ -242,27 +297,36 @@ sub create_instance {
 	#}
 }
 
+#
+# create_template
+#
+# Creates the data template
+#
+# @args		: templated (does the template already exist?)
+# @return	: the id or undef
+#
 sub create_template {
-	my $this = shift;
-	my $templated = shift ||$this->template_exist;
-	my $source = $this->{source};
+	my $this	= shift;
+	my $templated	= shift || $this->template_exist;
+
+	my $source	= $this->{source};
 	my ($dtd, $dt);
 
 	Main::log_msg("--> N2Cacti::Cacti::Data::create_template()", "LOG_DEBUG");
 
-	if($this->template_exist == 0){
+	if ( $this->template_exist == 0 )  {
 		$this->database->begin();
-		eval{
-			$dt = $this->database->new_hash("data_template");
-			$dt->{id} = "0"; # id not null implique qu'il y aura un nouvel enregistrement
-			$dt->{name} = $this->{data_template_name}; #optionnel
-			$dt->{hash} = generate_hash($this->{data_template_name});
-			$dt->{id} = $this->table_save("data_template", $dt);
+		eval {
+			$dt		= $this->database->new_hash("data_template");
+			$dt->{id}	= "0"; # id not null implique qu'il y aura un nouvel enregistrement
+			$dt->{name}	= $this->{data_template_name}; #optionnel
+			$dt->{hash}	= generate_hash($this->{data_template_name});
+			$dt->{id}	= $this->table_save("data_template", $dt);
 
 			Main::log_msg("N2Cacti::Cacti::Data::create_template(): save data_template ($$dt{id})", "LOG_DEBUG");
-	
+
 			# -- define data_template parameter
-			$dtd = $this->database->new_hash("data_template_data");
+			$dtd					= $this->database->new_hash("data_template_data");
 			$dtd->{id} 				= "0";
 			$dtd->{local_data_template_data_id}	= "0";
 			$dtd->{local_data_id}			= "0";
@@ -281,13 +345,13 @@ sub create_template {
 
 			Main::log_msg("N2Cacti::Cacti::Data::create_template(): saving data_template_data($$dtd{id})", "LOG_DEBUG");
 			Main::log_msg("N2Cacti::Cacti::Data::create_template(): creating rra for the instance", "LOG_DEBUG");
-	
+
 			#-- creating rra (we're creating four RRA (daily, weekly, monthly, yearly)
 			$this->database->execute("delete from data_template_data_rra where data_template_data_id='$$dtd{id}'");
-			for (my $i=0;$i<4;$i++){
-				my $dtrra = $this->database->new_hash("data_template_data_rra");
-				$dtrra->{data_template_data_id}=$dtd->{id};
-				$dtrra->{rra_id}=$i+1;
+			for ( my $i=0;$i<4;$i++ ) {
+				my $dtrra			= $this->database->new_hash("data_template_data_rra");
+				$dtrra->{data_template_data_id}	= $dtd->{id};
+				$dtrra->{rra_id}		= $i+1;
 				$this->table_save("data_template_data_rra", $dtrra);
 			}
 	
@@ -304,14 +368,22 @@ sub create_template {
 	return $dtd->{id};
 }
 
-
-#--------------------------------------------------------------
-# -- update des rrd / datasource
+#
+# update_rrd
+#
+# We initiate all datasource to be delete
+# Datasource create or update
+# Delete older data_source
+#
+# @args		: none
+# @return	: none
+#
 sub update_rrd {
-	my $this = shift;
-	my $state = {};
-	my $datasource 	= $this->{rrd}->getDataSource();
-	my $source = $this->{source};
+	my $this	= shift;
+
+	my $state	= {};
+	my $datasource	= $this->{rrd}->getDataSource();
+	my $source	= $this->{source};
 	my ($hostid, $dt, $dtd, $dl);
 	
 	Main::log_msg("--> N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG");
@@ -321,11 +393,11 @@ sub update_rrd {
 		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): host not found for  [$$this{hostname}] - check api_cacti script", "LOG_ERR");
 		return undef;
 	}
-	
+
 	$hostid = $this->database->get_id( "host", { description => $$this{hostname} } );
-	
+
+	# Le data template n'existe pas pour le service general donc ca plante	
 	$dt = $this->database->db_fetch_hash("data_template", { hash => generate_hash($this->{data_template_name}) });
-	$dtd = $this->database->db_fetch_hash("data_template_data", { data_template_id => $dt->{id}, local_data_id => 0});
 
 	if ( $this->database->item_exist("data_local", { host_id => $hostid, data_template_id => $dt->{id}}) == 1 ) {
 		$dl = $this->database->db_fetch_hash("data_local", { host_id => $hostid, data_template_id => $dt->{id}});
@@ -336,69 +408,65 @@ sub update_rrd {
 		$dl->{id} = $this->database->table_save( "data_local", $dl );
 	}
 
-	if ( $hostid == undef or $dt == undef or $dtd == undef or $dl ) {
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): cannot get hashes from database", "LOG_DEBUG");
-	}
-
 	# -- we initiate all datasource to be delete
 	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): init all existing datasource to be delete, update or create", "LOG_DEBUG");
 	my $sth = $this->database->execute("SELECT data_source_name FROM data_template_rrd WHERE data_template_id ='$$dt{id}'");
-	while (my @row=$sth->fetchrow()){
-		$state->{$row[0]}="del";
+	while ( my @row = $sth->fetchrow() ){
+		$state->{$row[0]} = "del";
 	}
 
 	# -- datasource create or update
-	while ( my ($key, $ds) = each (%$datasource) ) {
-		next if ($ds->{rrd_file} ne $this->{rrd}->{rrd_file}); # skip individual rrd
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create or update data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG");
+	foreach my $key (keys %$datasource) {
+		next if ($datasource->{$key}->{rrd_file} ne $this->{rrd}->{rrd_file});
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create or update data_template_rrd [$key]", "LOG_DEBUG");
 
 		# -- define the datasource state
-		if( ! defined($state->{$ds->{ds_name}}) ) {
-			$state->{$ds->{ds_name}} = "new";
+		if( ! defined($state->{$key}) ) {
+			$state->{$key} = "new";
 		} else {
-			$state->{$ds->{ds_name}} = "update";
+			$state->{$key} = "update";
 		}
 
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): creating data_template_rrd [$$ds{ds_name}]", "LOG_DEBUG");
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): creating data_template_rrd [$key]", "LOG_DEBUG");
 		$this->database->begin();
 
 		eval {
 			my $dtr = {};
-			if ( $state->{$ds->{ds_name}} eq "new" ) {
-				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG");	
+			if ( $state->{$key} eq "new" ) {
+				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): create data_template_rrd for [$key]", "LOG_DEBUG");	
 
-				$dtr = $this->database->new_hash("data_template_rrd");
-				$dtr->{hash} = generate_hash($$ds{ds_name}.generate_hash($$this{data_template_name}));
-				$dtr->{local_data_template_rrd_id} = "0"; # chainage interne 0 pour un template
-				$dtr->{local_data_id} = "0"; # identifiant de l'instance 0 pour un template
-				$dtr->{data_template_id} = $dt->{id};
-				$dtr->{rrd_maximum} = $ds->{max}||"0";
-				$dtr->{rrd_minimum} = $ds->{min}||"0";
-				$dtr->{rrd_heartbeat} = $ds->{heartbeat};
-				$dtr->{data_source_type_id} = $data_source_type->{$ds->{ds_type}};
-				$dtr->{data_source_name} = $ds->{ds_name};
-				$dtr->{data_input_field_id} = "0";
-				$dtr->{id} =$this->table_save("data_template_rrd",$dtr);
+				$dtr					= $this->database->new_hash("data_template_rrd");
+				$dtr->{hash}				= generate_hash($key.generate_hash($this->{data_template_name}));
+				$dtr->{local_data_template_rrd_id}	= "0"; # chainage interne 0 pour un template
+				$dtr->{local_data_id}			= "0"; # identifiant de l'instance 0 pour un template
+				$dtr->{data_template_id}		= $dt->{id};
+				$dtr->{rrd_maximum}			= $datasource->{$key}->{max}||"0";
+				$dtr->{rrd_minimum}			= $datasource->{$key}->{min}||"0";
+				$dtr->{rrd_heartbeat}			= $datasource->{$key}->{heartbeat};
+				$dtr->{data_source_type_id}		= $data_source_type->{$datasource->{$key}->{ds_type}};
+				$dtr->{data_source_name}		= $key;
+				$dtr->{data_input_field_id}		= "0";
+				$dtr->{id}				= $this->table_save("data_template_rrd", $dtr);
 
 				$this->database->commit();
 				$this->database->begin();
 			}
 
 			# -- load the instance if existing
-			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): load data_template_rrd for [$$ds{ds_name}]", "LOG_DEBUG");	
+			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): load data_template_rrd for [$key]", "LOG_DEBUG");	
 
 			$dtr = $this->database->db_fetch_hash("data_template_rrd", {
 				data_template_id		=> $dt->{id},
 				local_data_id			=> 0 ,
 				local_data_template_rrd_id 	=> 0,
-				data_source_name 		=> $ds->{ds_name} 
+				data_source_name 		=> $key
 			});
 
 			# -- if the data_local exist then we instanciate the data_template
-			if ( defined($dl) ) {
+			if ( defined $dl ) {
 				my $template_id = $dtr->{id};
 				# -- on recupère l'instance existante, 0 sinon
-				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): instancie data_template_rrd for [$$ds{ds_name}] on [$$this{hostname}]", "LOG_DEBUG");
+				Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): instancie data_template_rrd for [$datasource->{$key}->{ds_name}] on [$$this{hostname}]", "LOG_DEBUG");
 
 				if ( $this->database->item_exist( "data_template_rrd", { local_data_template_rrd_id => $template_id, local_data_id => $dl->{id}, data_template_id => $dt->{id} } ) == 1 ) {
 					$dtr->{id} = $this->database->get_id("data_template_rrd", {
@@ -415,10 +483,10 @@ sub update_rrd {
 				$dtr->{local_data_template_rrd_id}	= $template_id;      # chainage interne
 				$dtr->{local_data_id}			= $dl->{id};
 				$dtr->{data_template_id}		= $dt->{id};
-				$dtr->{rrd_maximum}			= $ds->{max} || 0;
-				$dtr->{rrd_minimum}			= $ds->{min} || 0;
-				$dtr->{rrd_heartbeat}			= $ds->{heartbeat};
-				$dtr->{data_source_type_id}		= $data_source_type->{$ds->{ds_type}};
+				$dtr->{rrd_maximum}			= $datasource->{$key}->{max} || 0;
+				$dtr->{rrd_minimum}			= $datasource->{$key}->{min} || 0;
+				$dtr->{rrd_heartbeat}			= $datasource->{$key}->{heartbeat};
+				$dtr->{data_source_type_id}		= $data_source_type->{$datasource->{$key}->{ds_type}};
 				$dtr->{id}				= $this->table_save("data_template_rrd", $dtr);
 			}
 
@@ -427,12 +495,12 @@ sub update_rrd {
 		};
 
 		$this->database->rollback() if $@;
-		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): end of creating de [$$ds{ds_name}]", "LOG_DEBUG");
+		Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): end of creating de [$key]", "LOG_DEBUG");
 	}
 
 	# -- delete older data_source
 	Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): delete older data_source", "LOG_DEBUG");
-	while( my ($key, $value)=each(%$state)){
+	while ( my ($key, $value) = each(%$state) ) {
 		if($value eq "del"){
 			my $command = "SELECT id FROM data_template_rrd WHERE data_template_id ='$$dt{id}' AND data_source_name='$key' AND local_data_id='0'";
 			Main::log_msg("N2Cacti::Cacti::Data::update_rrd(): sql command : $command", "LOG_DEBUG");
@@ -456,13 +524,6 @@ sub update_rrd {
 
 	Main::log_msg("<-- N2Cacti::Cacti::Data::update_rrd()", "LOG_DEBUG");
 }
-
-# -- defini des array dont les données sont fiees dans le code source de cacti : /var/www/cacti/include/config_arrays.php
-
-# -- definition de la structure des tables et valeur par défaut + description des champs en commentaire
-# -- cette definition sert surtout en guise de commentaire, la liste des champs des tables sont obtenu via la fonction : new_hash
-
-
 
 #-- we dont need this variable with N2Cacti::database::new_hash method
 my $__tables = {

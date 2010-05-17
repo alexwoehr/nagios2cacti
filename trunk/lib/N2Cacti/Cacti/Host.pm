@@ -1,3 +1,5 @@
+# tsync:: casole
+# sync:: calci
 ###########################################################################
 #                                                                         #
 # N2Cacti::Cacti::Host                                                    #
@@ -14,7 +16,6 @@
 # General Public License for more details.                                #
 #                                                                         #
 ###########################################################################
-
 
 package N2Cacti::Cacti::Host;
 
@@ -73,21 +74,29 @@ my $tables ={
 	'host_template'			=> '',
 	};
 
+#
+# new
+#
+# The constructor
+#
+# @args		: the parameters { tables, hostname, hostaddress, source }
+# @return	: the object
+#
 sub new {
-	# -- contient la definition des tables
-	my $class = shift;
-	my $attr=shift;
-	my %param = %$attr if $attr;
-	my $this={
+	my $class	= shift;
+	my $attr	= shift;
+
+	my %param	= %$attr if $attr;
+	my $this	= {
 		tables		=> $tables,
 		hostname	=> $param{hostname},
 		hostaddress	=> $param{hostaddress},
 		source		=> $param{source} || "Nagios"
 	};
 
-	#-- Connexion to cacti database
-	my $cacti_config = get_cacticonfig();
-	$this->{database} = new N2Cacti::database({
+	my $cacti_config	= get_cacticonfig();
+
+	$this->{database}	= new N2Cacti::database({
 		database_type		=> $$cacti_config{database_type},
 		database_schema		=> $$cacti_config{database_default},
 		database_hostname	=> $$cacti_config{database_hostname},
@@ -95,20 +104,35 @@ sub new {
 		database_password	=> $$cacti_config{database_password},
 		database_port		=> $$cacti_config{database_port},
 	});
-
-#	$this->{database}->set_raise_exception(1); # for error detection with try/catch
         
 	bless ($this, $class);
 	return $this;
 }
 
+#
+# database
+#
+# The database accessor
+#
+# @args		: none
+# @return	: the database object
+#
 sub database{
 	return shift->{database};
 }
 
+#
+# table_save
+#
+# Calls sql_save
+#
+# @args		: the table name
+# @return	: sql_save result or undef
+#
 sub table_save {
-	my $this = shift;
-	my $tablename=shift;
+	my $this	= shift;
+	my $tablename	= shift;
+
 	if ( defined($this->{tables}->{$tablename} ) ) {
 		return $this->database->sql_save(shift ,$tablename);
 	} else {
@@ -117,29 +141,37 @@ sub table_save {
 	}
 }
 
+#
+# create_template
+#
+# Creates the template if it does not exist
+#
+# @args		: none
+# @return	: the template_id
+#
 sub create_template {
-	my $this = shift;
-	my $template_name = "$$this{source} supervised host";
+	my $this		= shift;
+
+	my $template_name	= "$$this{source} supervised host";
 
 	Main::log_msg("--> N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG");
 
-	my $hash = generate_hash($template_name);
+	my $hash		= generate_hash($template_name);
 
 	if(!$this->database->item_exist("host_template", {hash => $hash})){
 		Main::log_msg("N2Cacti::Cacti::Host::create_template(): let's create the host template", "LOG_DEBUG");
 
-		my $ht = $this->database->new_hash("host_template");
-
-		$ht->{name} = $template_name;
-		$ht->{hash} = $hash;
-		$ht->{id} = $this->table_save("host_template",$ht);
+		my $ht		= $this->database->new_hash("host_template");
+		$ht->{name}	= $template_name;
+		$ht->{hash}	= $hash;
+		$ht->{id}	= $this->table_save("host_template",$ht);
 
 		Main::log_msg("<-- N2Cacti::Cacti::Host::create_template()", "LOG_DEBUG");
 		return $ht->{id};
 	} else {
 		Main::log_msg("N2Cacti::Cacti::Host::create_template(): the host template already exists", "LOG_DEBUG");
 
-		my $value = $this->{database}->get_id("host_template", {hash => $hash });
+		my $value	= $this->{database}->get_id("host_template", {hash => $hash });
 
 		if ( not scalar $value ) {
 			Main::log_msg("N2Cacti::Cacti::Host::create_template(): cannot find host_template with hash : $hash", "LOG_ERR");
@@ -151,11 +183,19 @@ sub create_template {
 	}
 }
 
+#
+# create_host
+#
+# Creates the host
+#
+# @args		: none
+# @return	: the host_id
+#
 sub create_host {
-	my $this = shift;
+	my $this	= shift;
  
 	#-- create the template if needed else grab the id
-	my $ht_id = $this->create_template();
+	my $ht_id	= $this->create_template();
 	my $hostid;
 	my $h;
     

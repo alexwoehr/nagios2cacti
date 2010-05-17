@@ -1,3 +1,5 @@
+# tsync::riola-bck romagna-bck  emilia-bck  casole donnini-bck
+# sync::donnini-bck grado  calci
 ###########################################################################
 #                                                                         #
 # N2Cacti::Config                                                         #
@@ -14,7 +16,6 @@
 # General Public License for more details.                                #
 #                                                                         #
 ###########################################################################
-
 
 use strict;
 
@@ -39,6 +40,8 @@ our $config={
 	CACHE_DIR   => "rrd-images",
 	RRDTOOL => "/usr/bin/rrdtool",
 	RRD_PATH_HIDDEN => 0,
+	RRD_CACHED => 0,
+	RRD_CACHE_URI => "/var/run/n2cacti/rrdcached.sock",
 	NAGIOS_HOST_URL => 1,
 	THUMB_WIDTH => 200,
 	THUMB_HEIGHT => 100,
@@ -71,6 +74,14 @@ our $config={
 my $config_loaded=0;
 our $process_name = "N2Cacti";
 
+#
+# get_config
+#
+# Checks if the config hash already been loaded, else load it.
+#
+# @args		: the config file
+# @return	: the config hash
+#
 sub get_config {
 	if ( $config_loaded == 0 ) {
 		return load_config(shift or "/etc/n2cacti.conf");
@@ -78,6 +89,14 @@ sub get_config {
 	return $config;
 }
 
+#
+# load_config
+#
+# Loads n2cacti config from file.
+#
+# @args		: the config file
+# @return	: the hash
+#
 sub load_config {
 	my $config_file = shift;
 	my $line   		= 0;
@@ -88,12 +107,12 @@ sub load_config {
 	#
 	# Parse configuration file
 	while (<CONF>) {
-		$line++;  # note confirguration file line number
-		chomp;    # Remove newline character
-		s/ //g;    # remove spaces
-		next if /^#/;    # Skip comments
-		next if /^$/;    # Skip empty lines
-		s/#.*//;         # Remove partial comments
+		$line++;	# note confirguration file line number
+		chomp;		# Remove newline character
+		s/ //g;		# remove spaces
+		next if /^#/;	# Skip comments
+		next if /^$/;	# Skip empty lines
+		s/#.*//;	# Remove partial comments
 
 		if (/^(.*)=(.*)$/) {
 			if (defined $config->{$1}) {
@@ -109,6 +128,14 @@ sub load_config {
 	return $config;
 }
 
+#
+# set_process_name
+#
+# Sets the process name
+#
+# @args		: the name
+# @return	: none
+#
 sub set_process_name {
 	$process_name = shift;
 }
