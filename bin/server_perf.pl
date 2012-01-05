@@ -51,7 +51,7 @@ use N2Cacti::Cacti;
 use N2Cacti::Cacti::Data;
 use N2Cacti::Cacti::Graph;
 use N2Cacti::Cacti::Host;
-use N2Cacti::Cacti::Tree;
+#use N2Cacti::Cacti::Tree;
 use N2Cacti::RRD;
 use Net::Server::Daemonize qw(daemonize);
 use IO::Handle;
@@ -381,8 +381,8 @@ while (1) {
 #				$graph_template->create_individual_instance();
 
 				# creates the graph tree
-				my $graph_tree = new N2Cacti::Cacti::Tree($config);
-				$graph_tree->update($graph_tree->get_appl_info());
+				#my $graph_tree = new N2Cacti::Cacti::Tree($config);
+				#$graph_tree->update($graph_tree->get_appl_info());
 			}
 #		}
 
