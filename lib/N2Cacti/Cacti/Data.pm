@@ -529,7 +529,7 @@ sub update_rrd {
 my $__tables = {
 	data_template => {	# liste of template (hors instance)
 		id				=> 0,	# (1)
-		namae				=> "", 	# format : "nagios - <TEMPLATENAME>" - the template name will be service_name return by RRD,
+		name				=> "", 	# format : "nagios - <TEMPLATENAME>" - the template name will be service_name return by RRD,
 		# this field must be unique for template create for nagios
 		hash				=> "",	# generate by generate_hash()
 	},
